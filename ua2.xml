@@ -1,0 +1,8 @@
+<config>
+	<account username="info" passwd="info" />
+	<uaserver ip="127.0.0.1" puerto="puerto" />
+	<rtpaudio puerto="puerto recepcion" />
+	<regproxy ip="ip" puerto="puerto" />
+	<log path="localizacion fichero" />
+	<audio path="localizacion fichero" />
+</config> 
