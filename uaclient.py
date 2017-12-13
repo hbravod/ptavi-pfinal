@@ -12,10 +12,10 @@ import sys
 CONFIG = sys.argv[1]
 METHOD = sys.argv[2]
 OPTION = sys.argv[3]
-
+"""
 def log(logfile, tipo, ip, mensaje):
     df = open(logfile, 'a')
-
+"""
 class XMLHandler(ContentHandler):
     dicc = {}
     def __init__(self):
@@ -37,38 +37,47 @@ class XMLHandler(ContentHandler):
     def get_tags(self):
         return(self.dicc)
 
+    def elparser():
+        parser = make_parser()
+        cHandler = XMLHandler()
+        parser.setContentHandler(cHandler)
+        parser.parse(open(CONFIG))
+        confdict = cHandler.get_tags()
+
 if __name__ == "__main__":
 
     if len(sys.argv) < 4:
         print("python3 uaclient.py config method option")
 
-    parser = make_parser()
-    cHandler = XMLHandler()
-    parser.setContentHandler(cHandler)
-    parser.parse(open(CONFIG))
-    confdict = cHandler.get_tags()
+    XMLHandler.elparser()
 
     IP_uaserver = XMLHandler.dicc['uaserver_ip']
     PORT_uaserver = int(XMLHandler.dicc['uaserver_puerto'])
     USER = XMLHandler.dicc['account_username']
+    PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         my_socket.connect((IP_uaserver, PORT_uaserver))
 
-        print("Enviando:", OPTION)
+#        print("Enviando:", OPTION, USER, PORT_uaserver)
         if METHOD == "REGISTER":
-            mensaje = ('REGISTER sip:'+USER+' SIP/2.0\r\nExpires: ' +
-                       OPTION+'\r\n', 'utf-8')
-            my_socket.send(bytes(mensaje) + b'\r\n')
-            log(confdict['logfile'], 'sent', IP_uaserver, mensaje)
+            mensaje = ('REGISTER sip:'+USER+':'+str(PORT_uaserver)+ 
+                       ' SIP/2.0\r\n\r\nExpires: ' +str(OPTION)+'\r\n')
+            my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+#            log(confdict['logfile'], 'sent', IP_uaserver, mensaje)
+            print(mensaje)
 
         if METHOD == "INVITE":
-            my_socket.send(bytes('INVITE sip:'+OPTION+' SIP/2.0\r\n', 'utf-8') +
-                           b'\r\n')
+            mensaje = ('INVITE sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
+                       'application/sdp\r\n'+'\r\n'+'v=0\r\n'+
+                       'o='+USER+' '+str(IP_uaserver)+'\r\n'+'s=misesion\r\n'+
+                       't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
+            my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+            print(mensaje)
 
         if METHOD == "BYE":
-            my_socket.send(bytes('BYE sip:'+OPTION+' SIP/2.0\r\n', 'utf-8') +
+            my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
                            b'\r\n')
 """
     DATA = my_socket.recv(1024)
