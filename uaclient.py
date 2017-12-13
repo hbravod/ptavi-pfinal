@@ -9,9 +9,7 @@ import os
 import socket
 import sys
 
-CONFIG = sys.argv[1]
-METHOD = sys.argv[2]
-OPTION = sys.argv[3]
+
 """
 def log(logfile, tipo, ip, mensaje):
     df = open(logfile, 'a')
@@ -45,14 +43,17 @@ class XMLHandler(ContentHandler):
         confdict = cHandler.get_tags()
 
 if __name__ == "__main__":
+    CONFIG = sys.argv[1]
+    METHOD = sys.argv[2]
+    OPTION = sys.argv[3]
 
     if len(sys.argv) < 4:
         print("python3 uaclient.py config method option")
 
     XMLHandler.elparser()
 
-    IP_uaserver = XMLHandler.dicc['uaserver_ip']
-    PORT_uaserver = int(XMLHandler.dicc['uaserver_puerto'])
+    IP_uaserver = XMLHandler.dicc['regproxy_ip']
+    PORT_uaserver = int(XMLHandler.dicc['regproxy_puerto'])
     USER = XMLHandler.dicc['account_username']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
 
