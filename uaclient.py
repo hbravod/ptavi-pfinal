@@ -8,6 +8,7 @@ from xml.sax.handler import ContentHandler
 import os
 import socket
 import sys
+import time
 
 
 """
@@ -39,40 +40,43 @@ class XMLHandler(ContentHandler):
         parser = make_parser()
         cHandler = XMLHandler()
         parser.setContentHandler(cHandler)
-        parser.parse(open(CONFIG))
+        parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
 
 if __name__ == "__main__":
+
+    if len(sys.argv) != 4:
+        sys.exit("python3 uaclient.py config method option")
+
     CONFIG = sys.argv[1]
     METHOD = sys.argv[2]
     OPTION = sys.argv[3]
 
-    if len(sys.argv) < 4:
-        print("python3 uaclient.py config method option")
-
     XMLHandler.elparser()
 
-    IP_uaserver = XMLHandler.dicc['regproxy_ip']
-    PORT_uaserver = int(XMLHandler.dicc['regproxy_puerto'])
+    if XMLHandler.dicc['regproxy_ip'] == None:
+        IP_PROXY = '127.0.0.1'
+    else:
+       IP_PROXY = XMLHandler.dicc['regproxy_ip']
+
+    PORT_PROXY = int(XMLHandler.dicc['regproxy_puerto'])
     USER = XMLHandler.dicc['account_username']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        my_socket.connect((IP_uaserver, PORT_uaserver))
+        my_socket.connect((IP_PROXY, PORT_PROXY))
 
-#        print("Enviando:", OPTION, USER, PORT_uaserver)
         if METHOD == "REGISTER":
-            mensaje = ('REGISTER sip:'+USER+':'+str(PORT_uaserver)+ 
+            mensaje = ('REGISTER sip:'+USER+':'+str(PORT_PROXY)+ 
                        ' SIP/2.0\r\n\r\nExpires: ' +str(OPTION)+'\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
-#            log(confdict['logfile'], 'sent', IP_uaserver, mensaje)
             print(mensaje)
 
         if METHOD == "INVITE":
             mensaje = ('INVITE sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
                        'application/sdp\r\n'+'\r\n'+'v=0\r\n'+
-                       'o='+USER+' '+str(IP_uaserver)+'\r\n'+'s=misesion\r\n'+
+                       'o='+USER+' '+str(IP_PROXY)+'\r\n'+'s=misesion\r\n'+
                        't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
             print(mensaje)
@@ -80,16 +84,13 @@ if __name__ == "__main__":
         if METHOD == "BYE":
             my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
                            b'\r\n')
-"""
-    DATA = my_socket.recv(1024)
 
-    print('Recibido -- ', data.decode('utf-8'))
-    MESSAGE_RECIVIED = data.decode('utf-8').split(' ')
-    for elementos in message_recivied:
-        if method != "BYE" and elementos == '200':
-            my_socket.send(bytes('ACK sip:' + LINE.split(':')[0] +
-                                 ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
-    print("Terminando socket...")
+        data = my_socket.recv(1024)
+        print('Recibido -- ', data.decode('utf-8'))
+        message_recivied = data.decode('utf-8').split(' ')
+        for elementos in message_recivied:
+            if METHOD != "BYE" and elementos == '200':
+                my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+        print("Terminando socket...")
 
-    print("Fin.")
-"""
+print("Fin.")
