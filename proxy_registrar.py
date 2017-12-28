@@ -6,14 +6,38 @@ Clase (y programa principal) para un servidor de eco en UDP simple
 
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
-from uaclient import XMLHandler
 import os
 import socketserver
 import sys
 import time
 
 
-class SIPRegisterHandler(socketserver.DatagramRequestHandler):
+class PROXYHandler(ContentHandler):
+    dicc = {}
+    def __init__(self):
+
+        self.labels = {'server': ['name', 'ip', 'puerto'],
+                       'database': ['path', 'passwdpath'],
+                       'log': ['path']
+                      }
+
+    def startElement(self, name, attrs):
+
+        if name in self.labels:
+            for atribute in self.labels[name]:
+                self.dicc[name + "_" + atribute] = attrs.get(atribute, "")
+
+    def get_tags(self):
+        return(self.dicc)
+
+    def elparser():
+        parser = make_parser()
+        cHandler = PROXYHandler()
+        parser.setContentHandler(cHandler)
+        parser.parse(open(sys.argv[1]))
+        confdict = cHandler.get_tags()
+
+class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
     Echo server class
     """
@@ -60,13 +84,19 @@ class SIPRegisterHandler(socketserver.DatagramRequestHandler):
         print(self.dic_client)
 
 if __name__ == "__main__":
-    PORT = int(sys.argv[1])
-    XMLHandler.elparser()
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         print("Usage: python3 proxy_registrar.py config")
-    serv = socketserver.UDPServer(('', PORT), SIPRegisterHandler)
-    print("Server MiServidorGuay listening at port 5555...")
+
+    PROXYHandler.elparser()
+
+    ARCHIVO_XML = sys.argv[1]
+    PORT_SERVER = int(PROXYHandler.dicc['server_puerto'])
+    NAME_SERVER = PROXYHandler.dicc['server_name']
+    IP_SERVER = PROXYHandler.dicc['server_ip']
+
+    serv = socketserver.UDPServer(('', PORT_SERVER), PROXYRegisterHandler)
+    print("Server MiServidorGuay listening at port 6003...")
     try:
         serv.serve_forever()
     except KeyboardInterrupt:
-        print('Server Cancelled')
+        print('Server Closed')
