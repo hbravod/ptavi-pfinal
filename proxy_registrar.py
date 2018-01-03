@@ -66,20 +66,23 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 expirados.append(usuarios)
         for usuarios in expirados:
             del self.dic_client[usuarios]
-
+    
     def registrados(self, ARCHIVO_XML):
-        mensaje = line.decode('utf-8').split()
-        user = mensaje[1].split(':')[1]      
-        puerto = self.client_address[1]
-        expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
-                               int(mensaje[1])))
+        line = self.rfile.read()
+        mensaje = line.decode('utf-8')
+        user = mensaje[0]   
+#        puerto = mensaje[1]
+#        expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
+#                               int(mensaje[1])))
+        print(mensaje)
         self.expired()
         self.BaseDatos(PATH_BASEDATOS)
-
+        """
         if usuario in self.dic_client:
             self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
         else:
             self.wfile.write(b"SIP/2.0 404 USER NOT FOUND\r\n\r\n")
+        """
 
 
     def handle(self):
@@ -92,7 +95,6 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
             mensaje = line.decode('utf-8').split()
             if mensaje:
                 if mensaje[0] == 'REGISTER':
-                    self.registrados(ARCHIVO_XML)
                     user = mensaje[1].split(':')[1]
                     direccion = self.client_address[0]
                     puerto = self.client_address[1]
@@ -117,6 +119,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
 #            print(line.decode('utf-8'), end="")
         print(self.dic_client)
         self.BaseDatos(PATH_BASEDATOS)
+        self.registrados(ARCHIVO_XML)
 
     #registrados()
 
