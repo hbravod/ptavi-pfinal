@@ -43,6 +43,18 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
     dic_client = {}
 
+    def BaseDatos(self, path):
+        self.expired()
+        f = open(path, "w")
+
+        for usuario in self.dic_client:
+            linea = (usuario + ' ' + self.dic_client[usuario][0] + ' ' +
+                     str(self.dic_client[usuario][1]) + ' ' + 
+                     self.dic_client[usuario][2] + ' ' +
+                     self.dic_client[usuario][3] + '\r\n')
+            f.write(linea)
+
+
     def expired(self):
         """
         Darse de baja en el servidor.
@@ -50,7 +62,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         expirados = []
         time_act = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
         for usuarios in self.dic_client:
-            if self.dic_client[usuarios][1] < time_act:
+            if self.dic_client[usuarios][3] < time_act:
                 expirados.append(usuarios)
         for usuarios in expirados:
             del self.dic_client[usuarios]
@@ -60,18 +72,24 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         handle method of the server class
         (all requests will be handled by this method)
         """
+
         for line in self.rfile:
             mensaje = line.decode('utf-8').split()
             if mensaje:
                 if mensaje[0] == 'REGISTER':
-                    user = mensaje[1][4:]
+                    print('register')
+                    user = mensaje[1].split(':')[1]
                     direccion = self.client_address[0]
+                    puerto = self.client_address[1]
                 if mensaje[0] == 'Expires:':
                     if mensaje[1] != '0':
+                        regist = time.strftime('%Y-%m-%d %H:%M:%S',
+                                               time.gmtime(time.time()))
                         expire = time.strftime('%Y-%m-%d %H:%M:%S',
                                                time.gmtime(time.time() +
                                                            int(mensaje[1])))
-                        self.dic_client[user] = [direccion, expire]
+                        self.dic_client[user] = [direccion, puerto, regist,
+                                                 expire]
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                     elif mensaje[1] == '0':
                         try:
@@ -80,8 +98,11 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                         except KeyError:
                             self.wfile.write(b"SIP/2.0 404 USER"
                                              b"NOT FOUND\r\n\r\n")
-            print(line.decode('utf-8'), end="")
+                if mensaje[0] == 'INVITE':
+                    print("invite")
+   #            print(line.decode('utf-8'), end="")
         print(self.dic_client)
+        self.BaseDatos(PATH_BASEDATOS)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -93,6 +114,7 @@ if __name__ == "__main__":
     PORT_SERVER = int(PROXYHandler.dicc['server_puerto'])
     NAME_SERVER = PROXYHandler.dicc['server_name']
     IP_SERVER = PROXYHandler.dicc['server_ip']
+    PATH_BASEDATOS = PROXYHandler.dicc['database_path']
 
     serv = socketserver.UDPServer(('', PORT_SERVER), PROXYRegisterHandler)
     print("Server MiServidorGuay listening at port 6003...")
