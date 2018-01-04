@@ -60,6 +60,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     Echo server class
     """
     dic_client = {}
+    dic_nonce = {}
 
     def BaseDatos(self, path):
         self.expired()
@@ -95,13 +96,8 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         metodo = mensaje.split()[0]
         usuario = mensaje.split()[1].split(':')[1]
         port = mensaje.split()[1].split(':')[2]
-        expires = mensaje.split()[3]
         t_expires = mensaje.split()[4]
         autor = mensaje.split('\r\n')[2].split(':')[0]
-        nonce = mensaje.split()[7].split('"')[1]
-        nonce_num = '000000000'
-        t_regist = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
-
         
         if mensaje:
             if metodo == 'REGISTER':
@@ -112,26 +108,37 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                         t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
                                                  time.gmtime(time.time() + 
                                                  int(t_expires)))
-                        self.dic_client[user] = t_expire
+                        self.dic_client[user][3] = t_expire
                         self.BaseDatos(PATH_BASEDATOS)
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                     elif t_expires == '0':
                         del self.dic_client[user]
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-#                else:
-#                    if autor == 'Authorization':
-#                       if nonce == nonce_num:
-#                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-#                       self.dic_client[user] = [direccion, puerto, t_regist,
-#                                             t_expire]
-#                       self.BaseDatos(PATH_BASEDATOS)
-#                    else:
-#                       error = "SIP/2.0 401 Unauthorized" + '\r\n' + 
-#                               "WWW Authenticate: Digest nonce=" + nonce_num
-#                       self.wfile.write(b"error\r\n\r\n")
-#            if metodo == 'INVITE':
-                
-        print(line.decode('utf-8'), end="")
+                else:
+                    if autor == 'Authorization':
+                       ua_response = mensaje.split('\r\n')[2].split('"')[1]
+                       pr_response = checknonce(self.nonce[user], user)
+                       if ua_response == pr_response:
+                            t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                     time.gmtime(time.time()))
+                            t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                 time.gmtime(time.time() + 
+                                                 int(t_expires)))
+                            self.dic_client[user] = [direccion, puerto, 
+                                                     t_regist, t_expire]
+                            self.BaseDatos(PATH_BASEDATOS)
+                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                       else:
+                          error = "SIP/2.0 400 Bad Request"
+                          self.wfile.write(b"error\r\n\r\n")
+                    else:
+                        nonce = random.randint(000000000, 999999999)
+                        self.nonce[user] = nonce
+                        error = "SIP/2.0 401 Unauthorized" + '\r\n' + "WWW Authenticate: Digest nonce=" + self.nonce[user]
+                        self.wfile.write(bytes("error\r\n\r\n"), 'utf-8')
+
+#            elif metodo == 'INVITE':
+#            elif metodo == 'BYE':    
         print(self.dic_client)
         self.BaseDatos(PATH_BASEDATOS)
 
