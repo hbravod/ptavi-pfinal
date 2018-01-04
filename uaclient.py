@@ -6,15 +6,13 @@ Programa cliente que abre un socket a un servidor
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import os
+import proxy_registrar
 import socket
 import sys
 import time
 
 
-"""
-def log(logfile, tipo, ip, mensaje):
-    df = open(logfile, 'a')
-"""
+
 class XMLHandler(ContentHandler):
     dicc = {}
     def __init__(self):
@@ -60,6 +58,7 @@ if __name__ == "__main__":
        IP_PROXY = XMLHandler.dicc['regproxy_ip']
 
     PORT_PROXY = int(XMLHandler.dicc['regproxy_puerto'])
+    PORT_USER = int(XMLHandler.dicc['uaserver_puerto'])
     USER = XMLHandler.dicc['account_username']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
 
@@ -71,6 +70,11 @@ if __name__ == "__main__":
             mensaje = ('REGISTER sip:'+USER+':'+str(PORT_PROXY)+ 
                        ' SIP/2.0\r\n\r\nExpires: ' +str(OPTION)+'\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+
+            data = my_socket.recv(1024)
+            message_recivied = data.decode('utf-8')
+            if message_recivied == "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(dic_nonce[usuario]) + '"' + '\r\n\r\n':
+                my_socket.send(bytes('REGISTER sip:' + USER + ":" + str(PORT_PROXY) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + "1234", 'utf-8') + b'\r\n')
             print(mensaje)
 
         if METHOD == "INVITE":
@@ -84,7 +88,7 @@ if __name__ == "__main__":
         if METHOD == "BYE":
             my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
                            b'\r\n')
-
+        """
         data = my_socket.recv(1024)
         print('Recibido -- ', data.decode('utf-8'))
         message_recivied = data.decode('utf-8').split(' ')
@@ -92,5 +96,5 @@ if __name__ == "__main__":
             if METHOD != "BYE" and elementos == '200':
                 my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
         print("Terminando socket...")
-
+        """
 print("Fin.")
