@@ -117,29 +117,28 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 else:
                     if autor == 'Authorization':
                        ua_response = mensaje.split('\r\n')[2].split('"')[1]
-                       pr_response = checknonce(self.nonce[user], user)
+                       pr_response = checknonce(self.dic_nonce[usuario], usuario)
                        if ua_response == pr_response:
-                            t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                     time.gmtime(time.time()))
-                            t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                 time.gmtime(time.time() + 
-                                                 int(t_expires)))
-                            self.dic_client[user] = [direccion, puerto, 
-                                                     t_regist, t_expire]
-                            self.BaseDatos(PATH_BASEDATOS)
-                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                           t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                    time.gmtime(time.time()))
+                           t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                time.gmtime(time.time() + 
+                                                int(t_expires)))
+                           self.dic_client[user] = [direccion, puerto, 
+                                                    t_regist, t_expire]
+                           self.BaseDatos(PATH_BASEDATOS)
+                           self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                        else:
-                          error = "SIP/2.0 400 Bad Request"
-                          self.wfile.write(b"error\r\n\r\n")
+                           error = "SIP/2.0 400 Bad Request"
+                           self.wfile.write(b"error\r\n\r\n")
                     else:
-                        nonce = random.randint(000000000, 999999999)
-                        self.nonce[user] = nonce
-                        error = "SIP/2.0 401 Unauthorized" + '\r\n' + "WWW Authenticate: Digest nonce=" + self.nonce[user]
-                        self.wfile.write(bytes("error\r\n\r\n"), 'utf-8')
+                        nonce_num = random.randint(000000000, 999999999)
+                        self.dic_nonce[usuario] = nonce_num
+                        error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
+                        self.wfile.write(bytes(error, 'utf-8'))
 
 #            elif metodo == 'INVITE':
-#            elif metodo == 'BYE':    
-        print(self.dic_client)
+#            elif metodo == 'BYE':
         self.BaseDatos(PATH_BASEDATOS)
 
 if __name__ == "__main__":
