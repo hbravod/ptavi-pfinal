@@ -66,23 +66,23 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 expirados.append(usuarios)
         for usuarios in expirados:
             del self.dic_client[usuarios]
-    
-    def registrados(self, ARCHIVO_XML):
+    """
+    def registrados(self, ARCHIVO_XML,):
         line = self.rfile.read()
         mensaje = line.decode('utf-8')
-        user = mensaje[0]   
+#        user = mensaje[0]   
 #        puerto = mensaje[1]
 #        expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
 #                               int(mensaje[1])))
-        print(mensaje)
+        print(line.decode('utf-8'), end="")
         self.expired()
         self.BaseDatos(PATH_BASEDATOS)
-        """
+
         if usuario in self.dic_client:
             self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
         else:
             self.wfile.write(b"SIP/2.0 404 USER NOT FOUND\r\n\r\n")
-        """
+    """
 
 
     def handle(self):
@@ -90,38 +90,42 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         handle method of the server class
         (all requests will be handled by this method)
         """
+        line = self.rfile.read()
+        mensaje = line.decode('utf-8')
+        metodo = mensaje.split()[0]
+        usuario = mensaje.split()[1].split(':')[1]
+        port = mensaje.split()[1].split(':')[2]
+        expires = mensaje.split()[3]
+        t_expires = mensaje.split()[4]
+#        autor = mensaje.split()[5].split(':')[0]
+        nonce = mensaje.split()[7].split('"')[1]
+        nonce_num = '000000000'
+        t_regist = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
+        t_expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
+                                 int(t_expires)))
+        
+        if mensaje:
+            if metodo == 'REGISTER':
+                direccion = self.client_address[0]
+                puerto = self.client_address[1]
+                if usuario in self.dic_client:
+                    self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                else:
+#                    if autor == 'Authorization':
+#                       if nonce == nonce_num:
+#                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+#                       self.dic_client[user] = [direccion, puerto, t_regist,
+#                                             t_expire]
+#                       self.BaseDatos(PATH_BASEDATOS)
+#                    else:
+#                       error = "SIP/2.0 401 Unauthorized" + '\r\n' + 
+#                               "WWW Authenticate: Digest nonce=" + nonce_num
+#                       self.wfile.write(b"error\r\n\r\n")
 
-        for line in self.rfile:
-            mensaje = line.decode('utf-8').split()
-            if mensaje:
-                if mensaje[0] == 'REGISTER':
-                    user = mensaje[1].split(':')[1]
-                    direccion = self.client_address[0]
-                    puerto = self.client_address[1]
-                if mensaje[0] == 'Expires:':
-                    if mensaje[1] != '0':
-                        regist = time.strftime('%Y-%m-%d %H:%M:%S',
-                                               time.gmtime(time.time()))
-                        expire = time.strftime('%Y-%m-%d %H:%M:%S',
-                                               time.gmtime(time.time() +
-                                                           int(mensaje[1])))
-                        self.dic_client[user] = [direccion, puerto, regist,
-                                                 expire]
-                        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                    elif mensaje[1] == '0':
-                        try:
-                            del self.dic_client[user]
-                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                        except KeyError:
-                            self.wfile.write(b"SIP/2.0 404 USER"
-                                             b"NOT FOUND\r\n\r\n")
-#                if mensaje[0] == 'INVITE':
-#            print(line.decode('utf-8'), end="")
+        print(line.decode('utf-8'), end="")
         print(self.dic_client)
         self.BaseDatos(PATH_BASEDATOS)
         self.registrados(ARCHIVO_XML)
-
-    #registrados()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
