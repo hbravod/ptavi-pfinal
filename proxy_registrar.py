@@ -6,10 +6,12 @@ Clase (y programa principal) para un servidor de eco en UDP simple
 
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
+import hashlib
 import os
 import socketserver
 import sys
 import time
+import random
 
 
 class PROXYHandler(ContentHandler):
@@ -36,6 +38,15 @@ class PROXYHandler(ContentHandler):
         parser.setContentHandler(cHandler)
         parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
+
+    def passwd(user):
+        with open(PATH_PSSWD, "r") as fichero:
+            for linea in fichero:
+                usuario_fichero = linea.split(' ')[1]
+                if user == usuario_fichero:
+                    passwd = line.split(' ')[3]
+                    break
+            return passwd
 
 class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
@@ -110,7 +121,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 puerto = self.client_address[1]
                 if usuario in self.dic_client:
                     self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                else:
+#                else:
 #                    if autor == 'Authorization':
 #                       if nonce == nonce_num:
 #                            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
@@ -121,6 +132,9 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
 #                       error = "SIP/2.0 401 Unauthorized" + '\r\n' + 
 #                               "WWW Authenticate: Digest nonce=" + nonce_num
 #                       self.wfile.write(b"error\r\n\r\n")
+            if metodo == 'INVITE':
+                
+
 
         print(line.decode('utf-8'), end="")
         print(self.dic_client)
@@ -138,6 +152,7 @@ if __name__ == "__main__":
     NAME_SERVER = PROXYHandler.dicc['server_name']
     IP_SERVER = PROXYHandler.dicc['server_ip']
     PATH_BASEDATOS = PROXYHandler.dicc['database_path']
+    PATH_PSSWD = PROXYHandler.dicc['database_passwdpath']
 
     serv = socketserver.UDPServer(('', PORT_SERVER), PROXYRegisterHandler)
     print("Server MiServidorGuay listening at port 6003...")
