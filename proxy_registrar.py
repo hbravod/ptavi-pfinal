@@ -48,6 +48,13 @@ class PROXYHandler(ContentHandler):
                     break
             return passwd
 
+    def checknonce(nonce_user, user):
+        function_check = hashlib.md5()
+        function_check.update(bytes(nonce_user, 'utf-8'))
+        function_check.update(bytes(passwd(user), 'utf-8'))
+        function_check.digest()
+        return function_check.hexdigest()
+
 class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
     Echo server class
@@ -77,24 +84,6 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 expirados.append(usuarios)
         for usuarios in expirados:
             del self.dic_client[usuarios]
-    """
-    def registrados(self, ARCHIVO_XML,):
-        line = self.rfile.read()
-        mensaje = line.decode('utf-8')
-#        user = mensaje[0]   
-#        puerto = mensaje[1]
-#        expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
-#                               int(mensaje[1])))
-        print(line.decode('utf-8'), end="")
-        self.expired()
-        self.BaseDatos(PATH_BASEDATOS)
-
-        if usuario in self.dic_client:
-            self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-        else:
-            self.wfile.write(b"SIP/2.0 404 USER NOT FOUND\r\n\r\n")
-    """
-
 
     def handle(self):
         """
@@ -108,19 +97,27 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         port = mensaje.split()[1].split(':')[2]
         expires = mensaje.split()[3]
         t_expires = mensaje.split()[4]
-#        autor = mensaje.split()[5].split(':')[0]
+        autor = mensaje.split('\r\n')[2].split(':')[0]
         nonce = mensaje.split()[7].split('"')[1]
         nonce_num = '000000000'
         t_regist = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
-        t_expire = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() +
-                                 int(t_expires)))
+
         
         if mensaje:
             if metodo == 'REGISTER':
                 direccion = self.client_address[0]
                 puerto = self.client_address[1]
                 if usuario in self.dic_client:
-                    self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                    if t_expires != '0':
+                        t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                 time.gmtime(time.time() + 
+                                                 int(t_expires)))
+                        self.dic_client[user] = t_expire
+                        self.BaseDatos(PATH_BASEDATOS)
+                        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                    elif t_expires == '0':
+                        del self.dic_client[user]
+                        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
 #                else:
 #                    if autor == 'Authorization':
 #                       if nonce == nonce_num:
@@ -132,14 +129,11 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
 #                       error = "SIP/2.0 401 Unauthorized" + '\r\n' + 
 #                               "WWW Authenticate: Digest nonce=" + nonce_num
 #                       self.wfile.write(b"error\r\n\r\n")
-            if metodo == 'INVITE':
+#            if metodo == 'INVITE':
                 
-
-
         print(line.decode('utf-8'), end="")
         print(self.dic_client)
         self.BaseDatos(PATH_BASEDATOS)
-        self.registrados(ARCHIVO_XML)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
