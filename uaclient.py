@@ -5,12 +5,12 @@ Programa cliente que abre un socket a un servidor
 """
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
+import hashlib
 import os
 import proxy_registrar
 import socket
 import sys
 import time
-
 
 
 class XMLHandler(ContentHandler):
@@ -41,6 +41,12 @@ class XMLHandler(ContentHandler):
         parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
 
+def checknonce(nonce):
+    function_check = hashlib.md5()
+    function_check.update(bytes(str(nonce), 'utf-8'))
+    function_check.update(bytes(str(PASSWD), 'utf-8'))
+    return function_check.hexdigest()
+
 if __name__ == "__main__":
 
     if len(sys.argv) != 4:
@@ -61,20 +67,23 @@ if __name__ == "__main__":
     PORT_USER = int(XMLHandler.dicc['uaserver_puerto'])
     USER = XMLHandler.dicc['account_username']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
+    PASSWD = XMLHandler.dicc['account_psswd']
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         my_socket.connect((IP_PROXY, PORT_PROXY))
 
         if METHOD == "REGISTER":
-            mensaje = ('REGISTER sip:'+USER+':'+str(PORT_PROXY)+ 
+            mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_PROXY)+ 
                        ' SIP/2.0\r\n\r\nExpires: ' +str(OPTION)+'\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
 
             data = my_socket.recv(1024)
             message_recivied = data.decode('utf-8')
-            if message_recivied == "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(dic_nonce[usuario]) + '"' + '\r\n\r\n':
-                my_socket.send(bytes('REGISTER sip:' + USER + ":" + str(PORT_PROXY) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + "1234", 'utf-8') + b'\r\n')
+            if '401' in message_recivied:
+                nonce = message_recivied.split('\r\n')[1].split()[3].split('"')[1]
+                respuesta = checknonce(nonce)
+                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" + str(PORT_PROXY) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + respuesta + '"', 'utf-8'))
             print(mensaje)
 
         if METHOD == "INVITE":
