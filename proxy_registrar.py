@@ -41,23 +41,23 @@ class PROXYHandler(ContentHandler):
 
 def password(user1):
     with open(PATH_PSSWD, "r") as fichero:
-        psswd = 'jaja'
+        psswd = None
         for linea in fichero:
-            usuario_fichero = linea.split(' ')[1]
+            usuario_fichero = linea.split()[1]
             print(usuario_fichero)
             if user1 == usuario_fichero:
-                psswd = linea.split(' ')[3]
+                print('coinciden usuarios')
+                psswd = linea.split()[3]
                 print(psswd)
                 break
         return psswd
 
-def checknonce(nonce_usuario, usuario):
+def checknonce(nonce_usuario, user1):
     function_check = hashlib.md5()
     function_check.update(bytes(str(nonce_usuario), 'utf-8'))
     print('el nonce es: ' + str(nonce_usuario))
-    function_check.update(bytes(str(password(usuario)), 'utf-8'))
-    print('la contraseña es: ' + str(password(usuario)))
-    function_check.digest()
+    function_check.update(bytes(str((password(user1))), 'utf-8'))
+    print('la contraseña es: ' + str(password(user1)))
     return function_check.hexdigest()
 
 class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
@@ -75,7 +75,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                          str(self.dic_client[usuario][1]) + ' ' + 
                          self.dic_client[usuario][2] + ' ' +
                          self.dic_client[usuario][3] + '\r\n')
-                f.write(linea)
+                fich.write(linea)
 
 
     def expired(self):
@@ -131,7 +131,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     if algo == 'Authorization':
                         print('tercera línea: ' + mensaje.split('\r\n')[2])
                         print('mensaje tiene Autorizacion: ' + algo)
-                        ua_response = mensaje.split('\r\n')[2].split('"')[1]
+                        ua_response = mensaje.split('\r\n')[2].split()[2].split('"')[1]
                         print('ua response: '+ ua_response)
                         try:
                             pr_response = checknonce(self.dic_nonce[usuario], usuario)
@@ -148,7 +148,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                                 self.BaseDatos(PATH_BASEDATOS)
                                 self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                             else:
-                                print('no coincide esta basura')
+                                print('no coinciden')
                                 self.wfile.write(b"SIP/2.0 400 Bad Request\r\n\r\n")
                         except KeyError:
                             self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
