@@ -39,21 +39,26 @@ class PROXYHandler(ContentHandler):
         parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
 
-    def passwd(user):
-        with open(PATH_PSSWD, "r") as fichero:
-            for linea in fichero:
-                usuario_fichero = linea.split(' ')[1]
-                if user == usuario_fichero:
-                    passwd = line.split(' ')[3]
-                    break
-            return passwd
+def password(user1):
+    with open(PATH_PSSWD, "r") as fichero:
+        psswd = 'jaja'
+        for linea in fichero:
+            usuario_fichero = linea.split(' ')[1]
+            print(usuario_fichero)
+            if user1 == usuario_fichero:
+                psswd = linea.split(' ')[3]
+                print(psswd)
+                break
+        return psswd
 
-    def checknonce(nonce_user, user):
-        function_check = hashlib.md5()
-        function_check.update(bytes(nonce_user, 'utf-8'))
-        function_check.update(bytes(passwd(user), 'utf-8'))
-        function_check.digest()
-        return function_check.hexdigest()
+def checknonce(nonce_usuario, usuario):
+    function_check = hashlib.md5()
+    function_check.update(bytes(str(nonce_usuario), 'utf-8'))
+    print('el nonce es: ' + str(nonce_usuario))
+    function_check.update(bytes(str(password(usuario)), 'utf-8'))
+    print('la contraseña es: ' + str(password(usuario)))
+    function_check.digest()
+    return function_check.hexdigest()
 
 class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
@@ -64,14 +69,13 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
 
     def BaseDatos(self, path):
         self.expired()
-        f = open(path, "w")
-
-        for usuario in self.dic_client:
-            linea = (usuario + ' ' + self.dic_client[usuario][0] + ' ' +
-                     str(self.dic_client[usuario][1]) + ' ' + 
-                     self.dic_client[usuario][2] + ' ' +
-                     self.dic_client[usuario][3] + '\r\n')
-            f.write(linea)
+        with open(path, "w") as fich:
+            for usuario in self.dic_client:
+                linea = (usuario + ' ' + self.dic_client[usuario][0] + ' ' +
+                         str(self.dic_client[usuario][1]) + ' ' + 
+                         self.dic_client[usuario][2] + ' ' +
+                         self.dic_client[usuario][3] + '\r\n')
+                f.write(linea)
 
 
     def expired(self):
@@ -80,66 +84,86 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         """
         expirados = []
         time_act = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
-        for usuarios in self.dic_client:
-            if self.dic_client[usuarios][3] < time_act:
-                expirados.append(usuarios)
-        for usuarios in expirados:
-            del self.dic_client[usuarios]
+        for usuario in self.dic_client:
+            if self.dic_client[usuario][3] < time_act:
+                expirados.append(usuario)
+        for usuario in expirados:
+            del self.dic_client[usuario]
 
     def handle(self):
         """
         handle method of the server class
         (all requests will be handled by this method)
         """
-        line = self.rfile.read()
-        mensaje = line.decode('utf-8')
-        metodo = mensaje.split()[0]
-        usuario = mensaje.split()[1].split(':')[1]
-        port = mensaje.split()[1].split(':')[2]
-        t_expires = mensaje.split()[4]
-        autor = mensaje.split('\r\n')[2].split(':')[0]
-        
-        if mensaje:
+        while 1:
+            line = self.rfile.read()
+            mensaje = line.decode('utf-8')
+            if not mensaje:
+                break
+            print('mensaje: ' + mensaje)
+            metodo = mensaje.split()[0]
+            print('metodo: ' + metodo)
+            t_expires = mensaje.split()[4]
+            print('t expires: ' + t_expires)
+            algo = mensaje.split('\r\n')[2].split(':')[0] #authorization
+            print('algo: ' + algo)
             if metodo == 'REGISTER':
+                usuario = mensaje.split()[1].split(':')[1]
+                print('usuario a registrar: ' + usuario)
                 direccion = self.client_address[0]
+                print('direccion user: ' + direccion)
                 puerto = self.client_address[1]
+                print('puerto user: ' + str(puerto))
                 if usuario in self.dic_client:
+                    print('usuario en dicc')
                     if t_expires != '0':
                         t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
                                                  time.gmtime(time.time() + 
                                                  int(t_expires)))
-                        self.dic_client[user][3] = t_expire
+                        self.dic_client[usuario][3] = t_expire
                         self.BaseDatos(PATH_BASEDATOS)
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                     elif t_expires == '0':
-                        del self.dic_client[user]
+                        del self.dic_client[usuario]
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                 else:
-                    if autor == 'Authorization':
-                       ua_response = mensaje.split('\r\n')[2].split('"')[1]
-                       pr_response = checknonce(self.dic_nonce[usuario], usuario)
-                       if ua_response == pr_response:
-                           t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                    time.gmtime(time.time()))
-                           t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                time.gmtime(time.time() + 
-                                                int(t_expires)))
-                           self.dic_client[user] = [direccion, puerto, 
-                                                    t_regist, t_expire]
-                           self.BaseDatos(PATH_BASEDATOS)
-                           self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                       else:
-                           error = "SIP/2.0 400 Bad Request"
-                           self.wfile.write(b"error\r\n\r\n")
+                    print('usuario no dicc')
+                    if algo == 'Authorization':
+                        print('tercera línea: ' + mensaje.split('\r\n')[2])
+                        print('mensaje tiene Autorizacion: ' + algo)
+                        ua_response = mensaje.split('\r\n')[2].split('"')[1]
+                        print('ua response: '+ ua_response)
+                        try:
+                            pr_response = checknonce(self.dic_nonce[usuario], usuario)
+                            print('proxy response: ' + pr_response)
+                            if ua_response == pr_response:
+                                print('son iguales')
+                                t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                         time.gmtime(time.time()))
+                                t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                    time.gmtime(time.time() + 
+                                                    int(t_expires)))
+                                self.dic_client[usuario] = [direccion, puerto, 
+                                                            t_regist, t_expire]
+                                self.BaseDatos(PATH_BASEDATOS)
+                                self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                            else:
+                                print('no coincide esta basura')
+                                self.wfile.write(b"SIP/2.0 400 Bad Request\r\n\r\n")
+                        except KeyError:
+                            self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
                     else:
-                        nonce_num = random.randint(000000000, 999999999)
+                        print('no tercera linea')
+                        nonce_num = random.randint(0000, 9999)
                         self.dic_nonce[usuario] = nonce_num
                         error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
                         self.wfile.write(bytes(error, 'utf-8'))
 
-#            elif metodo == 'INVITE':
-#            elif metodo == 'BYE':
-        self.BaseDatos(PATH_BASEDATOS)
+    #            elif metodo == 'INVITE':
+    #            elif metodo == 'BYE':
+            print(self.dic_client)
+            self.BaseDatos(PATH_BASEDATOS)
+            password(usuario)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
