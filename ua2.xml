@@ -1,8 +1,8 @@
 <config>
-	<account username="info" passwd="info" />
-	<uaserver ip="127.0.0.1" puerto="puerto" />
-	<rtpaudio puerto="puerto recepcion" />
-	<regproxy ip="ip" puerto="puerto" />
-	<log path="localizacion fichero" />
-	<audio path="localizacion fichero" />
+	<account username="wifi@wlan.com" passwd="PSK" />
+	<uaserver ip="127.0.0.1" puerto="6005" />
+	<rtpaudio puerto="34545" />
+	<regproxy ip="127.0.0.1" puerto="6003" />
+	<log path="log.txt" />
+	<audio path="cancion.mp3" />
 </config> 
