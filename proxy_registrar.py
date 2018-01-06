@@ -95,25 +95,21 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         handle method of the server class
         (all requests will be handled by this method)
         """
-        while 1:
-            line = self.rfile.read()
-            mensaje = line.decode('utf-8')
-            if not mensaje:
-                break
+        line = self.rfile.read()
+        mensaje = line.decode('utf-8')
+        if mensaje:
             print('mensaje: ' + mensaje)
             metodo = mensaje.split()[0]
-            print('metodo: ' + metodo)
-            t_expires = mensaje.split()[4]
-            print('t expires: ' + t_expires)
-            algo = mensaje.split('\r\n')[2].split(':')[0] #authorization
-            print('algo: ' + algo)
             if metodo == 'REGISTER':
+                t_expires = mensaje.split()[4]
+                print('t expires: ' + t_expires)
                 usuario = mensaje.split()[1].split(':')[1]
                 print('usuario a registrar: ' + usuario)
                 direccion = self.client_address[0]
                 print('direccion user: ' + direccion)
                 puerto = self.client_address[1]
                 print('puerto user: ' + str(puerto))
+                Authorization = mensaje.split('\r\n')[2].split(':')[0]
                 if usuario in self.dic_client:
                     print('usuario en dicc')
                     if t_expires != '0':
@@ -128,7 +124,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                 else:
                     print('usuario no dicc')
-                    if algo == 'Authorization':
+                    if Authorization == 'Authorization':
                         print('tercera línea: ' + mensaje.split('\r\n')[2])
                         print('mensaje tiene Autorizacion: ' + algo)
                         ua_response = mensaje.split('\r\n')[2].split()[2].split('"')[1]
@@ -159,11 +155,16 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                         error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
                         self.wfile.write(bytes(error, 'utf-8'))
 
-    #            elif metodo == 'INVITE':
-    #            elif metodo == 'BYE':
-            print(self.dic_client)
+            elif metodo == 'INVITE':
+                if 'INVITE' in mensaje:
+                    self.wfile.write(b"SIP/2.0 100 Trying\r\n\r\n")
+                    self.wfile.write(b"SIP/2.0 180 Ringing\r\n\r\n")
+                    self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                if 'ACK' in mensaje:
+                    print('recibo ack')
+                
+#           elif metodo == 'BYE':
             self.BaseDatos(PATH_BASEDATOS)
-            password(usuario)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
