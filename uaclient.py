@@ -75,15 +75,20 @@ if __name__ == "__main__":
 
         if METHOD == "REGISTER":
             mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_PROXY)+ 
-                       ' SIP/2.0\r\n\r\nExpires: ' +str(OPTION)+'\r\n')
+                       ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
 
             data = my_socket.recv(1024)
             message_recivied = data.decode('utf-8')
             if '401' in message_recivied:
+                print(message_recivied)
                 nonce = message_recivied.split('\r\n')[1].split()[3].split('"')[1]
                 respuesta = checknonce(nonce)
                 my_socket.send(bytes(METHOD + ' sip:' + USER + ":" + str(PORT_PROXY) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + respuesta + '"', 'utf-8'))
+                my_socket.connect((IP_PROXY, PORT_PROXY))
+                data = my_socket.recv(1024)
+                message_recivied = data.decode('utf-8')
+                print(message_recivied)
             print(mensaje)
 
         if METHOD == "INVITE":
