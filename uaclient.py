@@ -64,21 +64,21 @@ if __name__ == "__main__":
     if XMLHandler.dicc['regproxy_ip'] == None:
         IP_PROXY = '127.0.0.1'
     else:
-       IP_PROXY = XMLHandler.dicc['regproxy_ip']
+        IP_PROXY = XMLHandler.dicc['regproxy_ip']
 
     PORT_PROXY = int(XMLHandler.dicc['regproxy_puerto'])
     PORT_USER = int(XMLHandler.dicc['uaserver_puerto'])
+    print('puerto user: ' + str(PORT_USER))
     USER = XMLHandler.dicc['account_username']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
     PASSWD = XMLHandler.dicc['account_passwd']
-    print('pass: ' + PASSWD)
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         my_socket.connect((IP_PROXY, PORT_PROXY))
 
         if METHOD == "REGISTER":
-            mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_PROXY)+ 
+            mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_USER)+ 
                        ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
                 print(nonce)
                 respuesta = checknonce(nonce)
                 print('respuesta: ' + respuesta)
-                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" + str(PORT_PROXY) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + respuesta + '"', 'utf-8'))
+                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" + str(PORT_USER) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + respuesta + '"', 'utf-8'))
                 my_socket.connect((IP_PROXY, PORT_PROXY))
                 data = my_socket.recv(1024)
                 message_recivied = data.decode('utf-8')
@@ -99,18 +99,29 @@ if __name__ == "__main__":
             print(mensaje)
 
         if METHOD == "INVITE":
-            mensaje = ('INVITE sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
+            mensaje = (METHOD + ' sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
                        'application/sdp\r\n'+'\r\n'+'v=0\r\n'+
-                       'o='+USER+' '+str(IP_PROXY)+'\r\n'+'s=misesion\r\n'+
+                       'o='+USER+' '+str(PORT_USER)+'\r\n'+'s=misesion\r\n'+
                        't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
+
+            envia = mensaje.split('\r\n')[4].split('=')[1].split()[0]
+            print('envia: ' + envia)
+            recibe = mensaje.split()[1].split(':')[1]
+            print('recibe: ' + recibe)
+            envia_ip = mensaje.split('\r\n')[4].split()[1]
+            print('ip_envia: ' + envia_ip)
+            #recibe_ip = 
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+            #recibe_port = 
             print(mensaje)
+            my_socket.connect((IP_PROXY, PORT_PROXY))
 
             data = my_socket.recv(1024)
             message_recivied = data.decode('utf-8')
             print('recibo del proxy: \r\n' + message_recivied)
-            if '200' in message_recivied:
-                my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+            if 'ACK' in message_recivied:
+                print('me llega ack')
+                my_socket.connect((envia_ip, recibe_port))
 
         if METHOD == "BYE":
             my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
