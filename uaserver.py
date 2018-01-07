@@ -8,9 +8,27 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 from uaclient import XMLHandler
 import os
+import socket
 import socketserver
 import sys
+import time
 
+
+"""
+def log(path, mensaje, evento):
+
+    f = open(path, "a")
+    if evento == 'Recieve':
+        mensaje = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(time.time())) +
+                  ' Receive ' + mensaje.replace('\r\n', ' ') + '\r\n'
+    if evento == 'Send':
+        mensaje = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(time.time())) +
+                  ' Send ' + mensaje.replace('\r\n', ' ') + '\r\n'
+    if evento == 'Error':
+        mensaje = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(time.time())) +
+                 ' Error ' + message.replace('\r\n', ' ') + '\r\n'
+    f.write(mensaje)
+"""
 
 class EchoHandler(socketserver.DatagramRequestHandler):
     """
@@ -36,44 +54,60 @@ class EchoHandler(socketserver.DatagramRequestHandler):
 
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
-            line = self.rfile.read()
+            mensaje = self.rfile.read()
+            print('recibo cliente: ' + mensaje)
             lista = ['INVITE', 'ACK', 'BYE']
-            print('El cliente envía:' + line.decode('utf-8'))
-            method = ((line.decode('utf-8')).split(' ')[0])
-            if not line:
+            print('El cliente envía:' + mensaje.decode('utf-8'))
+            method = ((mensaje.decode('utf-8')).split()[0])
+            if not mensaje:
                 break
 
             if method not in lista:
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed \r\n\r\n")
+                mensaje = "SIP/2.0 405 Method Not Allowed"
+                #log(CONFIG[4]['path'], mensaje, 'Error')
 
             elif self.error(line.decode('utf-8')):
                 self.wfile.write(b"SIP/2.0 400 Bad Request \r\n\r\n")
 
             elif method == lista[0]:
-                self.wfile.write(b"SIP/2.0 100 Trying \r\n\r\n" +
-                                 b"SIP/2.0 180 Ringing \r\n\r\n" +
-                                 b"SIP/2.0 200 OK \r\n\r\n")
+                envia_ip = mensaje
+                self.wfile.write(bytes("SIP/2.0 100 Trying \r\n\r\n" +
+                                 "SIP/2.0 180 Ringing \r\n\r\n" +
+                                 "SIP/2.0 200 OK \r\n\r\n" + "\r\n\r\n" + 
+                                 'Content-Type: '+ 'application/sdp\r\n' +
+                                 '\r\n' + 'v=0\r\n' + 'o=' + USER + ' ' +
+                                 str(IP_USER) + '\r\n' + 's=misesion\r\n' +
+                                 't=0\r\n'+'m=audio' + ' ' + str(PORT_CANCION)
+                                 + ' ' + 'RTP\r\n', 'utf-8'))
 
             elif method == lista[1]:
-                aEjecutar = 'mp32rtp -i 127.0.0.1 -p 23032 < ' + sys.argv[3]
-                aEjecutar += " < " + cancion.mp3
-                print("Vamos a ejecutar", aEjecutar)
-                os.system(aEjecutar)
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
+                    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    my_socket.connect((IP_PROXY, PORT_PROXY))
+                    self.wfile.write(b"Recibido")
+                #aEjecutar = 'mp32rtp -i 127.0.0.1 -p 23032 < ' + sys.argv[3]
+                #print("Vamos a ejecutar", aEjecutar)
+                #os.system(aEjecutar)
 
             elif method == lista[2]:
                 self.wfile.write(b"SIP/2.0 200 OK \r\n\r\n")
 
 
 if __name__ == "__main__":
-    CONFIG = sys.argv[1]
-    XMLHandler.elparser()
-    IP_uaserver = XMLHandler.dicc['uaserver_ip']
-    PORT_uaserver = int(XMLHandler.dicc['uaserver_puerto'])
     if len(sys.argv) < 2:
         print("Usage: python3 uaserver.py config")
 
+    CONFIG = sys.argv[1]
+    XMLHandler.elparser()
+    IP_PROXY = XMLHandler.dicc['regproxy_ip']
+    PORT_PROXY = int(XMLHandler.dicc['regproxy_puerto'])
+    IP_USER = XMLHandler.dicc['uaserver_ip']
+    PORT_USER = int(XMLHandler.dicc['uaserver_puerto'])
+    PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
+
     # Creamos servidor de eco y escuchamos
-    SERV = socketserver.UDPServer((IP_uaserver, PORT_uaserver), EchoHandler)
+    SERV = socketserver.UDPServer((IP_USER, PORT_USER), EchoHandler)
     print("Listening...")
     try:
         SERV.serve_forever()
