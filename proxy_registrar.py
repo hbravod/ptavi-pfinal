@@ -77,7 +77,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         with open(path, "w") as fich:
             for usuario in self.dic_client:
                 linea = (usuario + ' ' + self.dic_client[usuario][0] + ' ' +
-                         str(PORT_SERVER) + ' ' + 
+                         str(self.dic_client[usuario][1]) + ' ' + 
                          self.dic_client[usuario][2] + ' ' +
                          self.dic_client[usuario][3] + '\r\n')
                 fich.write(linea)
@@ -112,8 +112,8 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                 print('usuario a registrar: ' + usuario)
                 direccion = self.client_address[0]
                 print('direccion user: ' + direccion)
-                puerto = PORT_SERVER
-                print('puerto user: ' + str(puerto))
+                puerto = mensaje.split()[1].split(':')[2]
+                print('puerto server: ' + str(puerto))
                 algo = mensaje.split('\r\n')[2].split(':')[0]
                 if usuario in self.dic_client:
                     print('usuario en dicc')
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     PATH_PSSWD = PROXYHandler.dicc['database_passwdpath']
     PATH_LOG = PROXYHandler.dicc['log_path']
 
-    serv = socketserver.UDPServer(('', PORT_SERVER), PROXYRegisterHandler)
+    serv = socketserver.UDPServer((IP_SERVER, PORT_SERVER), PROXYRegisterHandler)
     print("Server " + NAME_SERVER + " listening at port " + str(PORT_SERVER) + "...")
     try:
         serv.serve_forever()
