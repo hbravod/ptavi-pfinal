@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
         if METHOD == "INVITE":
             mensaje = (METHOD + ' sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
-                       'application/sdp\r\n'+'\r\n'+'v=0\r\n'+
+                       'application/sdp\r\n\r\n'+'v=0\r\n'+
                        'o='+USER+' '+str(PORT_USER)+'\r\n'+'s=misesion\r\n'+
                        't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
@@ -112,31 +112,20 @@ if __name__ == "__main__":
             print('recibo del proxy: ' + str(message_recivied))
 
             if 'INVITE' in message_recivied:
-                print('recibo del proxy: ' + data.decode('utf-8'))
-                
+                print('recibo del proxy: ' + message_recivied)
+                self.wfile.write(bytes(METHOD + " sip:" + OPTION + " SIP/2.0\r\n" + 
+                                       'Content-Type: '+ 'application/sdp\r\n\r\n'
+                                       + 'v=0\r\n' + 'o=' + USER + ' ' +
+                                       str(IP_USER) + '\r\n' + 's=misesion\r\n' +
+                                       't=0\r\n'+'m=audio' + ' ' + str(PORT_CANCION)
+                                       + ' ' + 'RTP\r\n', 'utf-8'))
 
-            """
+                if 'ACK' in message_recivied:
+                    print('me llega ack: ' + message_recivied)
+                    my_socket.connect((envia_ip, envia_port))
+                    my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+                    print('eyyy')
 
-            envia = mensaje.split('\r\n')[4].split('=')[1].split()[0]
-            print('envia: ' + envia)
-            recibe = mensaje.split()[1].split(':')[1]
-            print('recibe: ' + recibe)
-            envia_ip = mensaje.split('\r\n')[4].split()[1]
-            print('ip_envia: ' + envia_ip)
-            my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
-            envia_port = mensaje.split('\r\n')[4].split('=')[1].split()[1]
-            print('port_envia: ' + str(envia_port))
-            print(mensaje)
-            my_socket.connect((IP_PROXY, PORT_PROXY))
-
-            data = my_socket.recv(1024)
-            message_recivied = data.decode('utf-8')
-            print('recibo del proxy: \r\n' + message_recivied)
-            if message_recivied == 'ACK':
-                print('me llega ack: ' + data.decode('utf-8'))
-                my_socket.connect((envia_ip, envia_port))
-                print('eyyy')
-            """
         if METHOD == "BYE":
             my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
                            b'\r\n')

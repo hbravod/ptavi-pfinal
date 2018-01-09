@@ -37,8 +37,6 @@ class EchoHandler(socketserver.DatagramRequestHandler):
     def error(self, line):
         line_errores = line.split(' ')
         fail = False
-        if len(line_errores) != 3:
-            fail = True
         if line_errores[1][0:4] != 'sip:':
             fail = True
         if line_errores[1].find('@') == -1:
@@ -54,41 +52,35 @@ class EchoHandler(socketserver.DatagramRequestHandler):
 
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
-            mensaje = self.rfile.read()
+            mensaje = self.rfile.read().decode('utf-8')
             print('recibo cliente: ' + mensaje)
             lista = ['INVITE', 'ACK', 'BYE']
-            print('El cliente envía:' + mensaje.decode('utf-8'))
-            method = ((mensaje.decode('utf-8')).split()[0])
+            method = mensaje.split()[0]
             if not mensaje:
                 break
 
             if method not in lista:
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed \r\n\r\n")
-                mensaje = "SIP/2.0 405 Method Not Allowed"
-                #log(CONFIG[4]['path'], mensaje, 'Error')
 
-            elif self.error(line.decode('utf-8')):
+            elif self.error(mensaje):
                 self.wfile.write(b"SIP/2.0 400 Bad Request \r\n\r\n")
 
-            elif method == lista[0]:
-                envia_ip = mensaje
+            elif method == 'INVITE':
                 self.wfile.write(bytes("SIP/2.0 100 Trying \r\n\r\n" +
-                                 "SIP/2.0 180 Ringing \r\n\r\n" +
-                                 "SIP/2.0 200 OK \r\n\r\n" + "\r\n\r\n" + 
-                                 'Content-Type: '+ 'application/sdp\r\n' +
-                                 '\r\n' + 'v=0\r\n' + 'o=' + USER + ' ' +
-                                 str(IP_USER) + '\r\n' + 's=misesion\r\n' +
-                                 't=0\r\n'+'m=audio' + ' ' + str(PORT_CANCION)
-                                 + ' ' + 'RTP\r\n', 'utf-8'))
+                                       "SIP/2.0 180 Ringing \r\n\r\n" +
+                                       "SIP/2.0 200 OK \r\n" + 
+                                       'Content-Type: '+ 'application/sdp\r\n\r\n'
+                                       + 'v=0\r\n' + 'o=' + USER + ' ' +
+                                       str(IP_USER) + '\r\n' + 's=misesion\r\n' +
+                                       't=0\r\n'+'m=audio' + ' ' + str(PORT_CANCION)
+                                       + ' ' + 'RTP\r\n', 'utf-8'))
 
             elif method == lista[1]:
-                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
-                    my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    my_socket.connect((IP_PROXY, PORT_PROXY))
-                    self.wfile.write(b"Recibido")
-                #aEjecutar = 'mp32rtp -i 127.0.0.1 -p 23032 < ' + sys.argv[3]
-                #print("Vamos a ejecutar", aEjecutar)
-                #os.system(aEjecutar)
+                print("ACK")          
+                self.wfile.write(b"Recibido")
+                aEjecutar = 'mp32rtp -i 127.0.0.1 -p 23032 < ' + sys.argv[3]
+                print("Vamos a ejecutar", aEjecutar)
+                os.system(aEjecutar)
 
             elif method == lista[2]:
                 self.wfile.write(b"SIP/2.0 200 OK \r\n\r\n")

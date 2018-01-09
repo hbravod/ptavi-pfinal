@@ -95,6 +95,8 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         for usuario in expirados:
             del self.dic_client[usuario]
 
+    
+
     def handle(self):
         """
         handle method of the server class
@@ -161,37 +163,32 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                         self.wfile.write(bytes(error, 'utf-8'))
 
             elif metodo == 'INVITE':
-                envia = mensaje.split('\r\n')[4].split()[0][2:]
-                print('envia: ' + envia)
-                recibe = mensaje.split()[1].split(':')[1]
+                emite = mensaje.split('\r\n')[4].split()[0][2:] #client1
+                print('emite: ' + emite)
+                recibe = mensaje.split()[1].split(':')[1] #client2
                 print('recibe: ' + str(recibe))
-                if envia in self.dic_client and recibe in self.dic_client:
+                if emite in self.dic_client and recibe in self.dic_client:
                     print('usuarios en dic')
-                    print('dic_envia: ' + str(self.dic_client))
-                    recibe_ip = self.dic_client[recibe][0]
+                    recibe_ip = self.dic_client[recibe][0] #client2
                     print('ip_recibe: ' + str(recibe_ip))
-                    envia_ip = self.dic_client[envia][0]
-                    print('ip_envia: ' + str(envia_ip))
-                    recibe_port = self.dic_client[recibe][1]
+                    emite_ip = self.dic_client[emite][0] #client1
+                    print('ip_envia: ' + str(emite_ip))
+                    recibe_port = self.dic_client[recibe][1] #client2
                     print('port_recibe: ' + str(recibe_port))
-                    envia_port = self.dic_client[envia][1]
-                    print('port_envia: ' + str(envia_port))
+                    emite_port = self.dic_client[emite][1] #client1
+                    print('port_envia: ' + str(emite_port))
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
                         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        my_socket.connect((recibe_ip, int(recibe_port)))
+                        my_socket.connect((emite_ip, int(emite_port)))
                         my_socket.send(bytes(mensaje, 'utf-8'))
                         data = my_socket.recv(1024)
                         print('respuesta receptor a invite: ' + data.decode('utf-8'))
-                    self.wfile.write(bytes(data, 'utf-8'))
+                    self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
                 else:
                     print('no users dic')
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
 
                 """
-                if 'INVITE' in mensaje:
-                    self.wfile.write(b"SIP/2.0 100 Trying\r\n\r\n")
-                    self.wfile.write(b"SIP/2.0 180 Ringing\r\n\r\n")
-                    self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                 if 'ACK' in mensaje:
                     print('recibo ack' + mensaje)
                 """
