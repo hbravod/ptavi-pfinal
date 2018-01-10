@@ -68,6 +68,17 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     dic_client = {}
     dic_nonce = {}
 
+def Log(path, mensaje, accion):
+        f = open(path, "a")
+        if accion == 'recibir':
+            Mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        elif accion == 'enviar':
+            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        elif Accion == 'error':
+            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        f.write(mensaje) 
+        f.close()
+
     def BaseDatos(self, path):
         """
         Escribe en el fichero database.txt: usuario ip puerto 
@@ -102,9 +113,11 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         handle method of the server class
         (all requests will be handled by this method)
         """
-        line = self.rfile.read()
-        mensaje = line.decode('utf-8')
-        if mensaje:
+        while 1:
+            line = self.rfile.read()
+            mensaje = line.decode('utf-8')
+            if not mensaje:
+                break
             print('mensaje: ' + mensaje)
             metodo = mensaje.split()[0]
             if metodo == 'REGISTER':
@@ -179,7 +192,7 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     print('port_envia: ' + str(emite_port))
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
                         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        my_socket.connect((emite_ip, int(emite_port)))
+                        my_socket.connect((recibe_ip, int(recibe_port))) #client2
                         my_socket.send(bytes(mensaje, 'utf-8'))
                         data = my_socket.recv(1024)
                         print('respuesta receptor a invite: ' + data.decode('utf-8'))
@@ -188,11 +201,48 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     print('no users dic')
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
 
-                """
-                if 'ACK' in mensaje:
-                    print('recibo ack' + mensaje)
-                """
-#           elif metodo == 'BYE':
+            elif metodo == 'ACK':
+                metodo = mensaje.split()[0]
+                print('metodo: ' + metodo)
+                emite = mensaje.split()[1].split(':')[1]
+                print('emite: ' + emite)
+                if emite in self.dic_client:
+                    ip_emite = self.dic_client[emite][0]
+                    print('emite_ip: ' + ip_emite)
+                    port_emite = self.dic_client[emite][1]
+                    print('emite_port: ' + str(port_emite))
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        my_socket.connect((ip_emite, int(port_emite)))
+                        my_socket.send(bytes(mensaje, 'utf-8'))
+                else:
+                    print('no users dic')
+                    self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
+
+            elif metodo == 'BYE':
+                recibe = mensaje.split()[1].split(':')[1] #client2
+                print('recibe: ' + str(recibe))
+                if recibe in self.dic_client:
+                    print('receptor en dicc')
+                    ip_recibe = self.dic_client[recibe][0] #127.0.0.1
+                    port_recibe = self.dic_client[recibe][1] #6005
+                    print('ip recibe: ' + ip_recibe)
+                    print('port recibe: ' + str(port_recibe))
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        my_socket.connect((ip_recibe, int(port_recibe)))
+                        my_socket.send(bytes(mensaje, 'utf-8'))
+                        data = my_socket.recv(1024)
+                        print('respuesta de recibe en INVITE: ' + data.decode('utf-8'))
+                    self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
+                else:
+                    print('no users dic')
+                    self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
+
+            else:
+                self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n\r\n")
+
+            print(self.dic_client)
             self.BaseDatos(PATH_BASEDATOS)
 
 if __name__ == "__main__":

@@ -50,6 +50,18 @@ def checknonce(nonce):
     print('cliente: ' + function_check.hexdigest())
     return function_check.hexdigest()
 
+def Log(path, mensaje, accion):
+        f = open(path, "a")
+        if accion == 'recibir':
+            Mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        elif accion == 'enviar':
+            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        elif Accion == 'error':
+            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        f.write(mensaje) 
+        f.close()
+        
+
 if __name__ == "__main__":
 
     if len(sys.argv) != 4:
@@ -70,8 +82,11 @@ if __name__ == "__main__":
     PORT_USER = int(XMLHandler.dicc['uaserver_puerto'])
     print('puerto user: ' + str(PORT_USER))
     USER = XMLHandler.dicc['account_username']
+    IP_USER = XMLHandler.dicc['uaserver_ip']
     PORT_CANCION = int(XMLHandler.dicc['rtpaudio_puerto'])
     PASSWD = XMLHandler.dicc['account_passwd']
+    CANCION = XMLHandler.dicc['audio_path']
+    LOG = XMLHandler.dicc['log_path']
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -79,10 +94,13 @@ if __name__ == "__main__":
 
         if METHOD == "REGISTER":
             mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_USER)+ 
-                       ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n')
+                       ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
 
+
+
             data = my_socket.recv(1024)
+            print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8')
             print('recibo del proxy: ' + message_recivied)
             if '401' in message_recivied:
@@ -96,12 +114,11 @@ if __name__ == "__main__":
                 data = my_socket.recv(1024)
                 message_recivied = data.decode('utf-8')
                 print(message_recivied)
-            print(mensaje)
 
-        if METHOD == "INVITE":
+        elif METHOD == "INVITE":
             mensaje = (METHOD + ' sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
                        'application/sdp\r\n\r\n'+'v=0\r\n'+
-                       'o='+USER+' '+str(PORT_USER)+'\r\n'+'s=misesion\r\n'+
+                       'o='+USER+' '+IP_USER+'\r\n'+'s=misesion\r\n'+
                        't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
             print('mensaje que envia: ' + mensaje)
@@ -109,33 +126,35 @@ if __name__ == "__main__":
             data = my_socket.recv(1024)
             print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8').split()
-            print('recibo del proxy: ' + str(message_recivied))
+            print('mensaje recibido:'+ '\r\n' + data.decode('utf-8'))
 
-            if 'INVITE' in message_recivied:
-                print('recibo del proxy: ' + message_recivied)
-                self.wfile.write(bytes(METHOD + " sip:" + OPTION + " SIP/2.0\r\n" + 
-                                       'Content-Type: '+ 'application/sdp\r\n\r\n'
-                                       + 'v=0\r\n' + 'o=' + USER + ' ' +
-                                       str(IP_USER) + '\r\n' + 's=misesion\r\n' +
-                                       't=0\r\n'+'m=audio' + ' ' + str(PORT_CANCION)
-                                       + ' ' + 'RTP\r\n', 'utf-8'))
+            if '100' in message_recivied:
+                print('recibo 100, 180, 200')
+                user_receptor = message_recivied[12].split('=')[1]
+                print('user_receptor: ' + user_receptor)
+                ip_receptor = message_recivied[13]
+                print('ip_receptor: ' + ip_receptor)
+                port_receptor = message_recivied[17]
+                print('port_receptor: ' + port_receptor)
 
-                if 'ACK' in message_recivied:
-                    print('me llega ack: ' + message_recivied)
-                    my_socket.connect((envia_ip, envia_port))
-                    my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
-                    print('eyyy')
+                my_socket.send(bytes('ACK sip:' + user_receptor + ' SIP/2.0\r\n', 'utf-8'))
 
-        if METHOD == "BYE":
-            my_socket.send(bytes('BYE sip:'+USER+' SIP/2.0\r\n', 'utf-8') +
+                aEjecutar = './mp32rtp -i ' + ip_receptor + ' -p ' + str(port_receptor) + ' < ' + CANCION
+                print("Vamos a ejecutar", aEjecutar)
+                os.system(aEjecutar)
+                print('Acabao')
+            """
+            if '400' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '404' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '405' in message_recivied:
+                print(data.decode('utf-8'))
+            """
+
+        elif METHOD == "BYE":
+            my_socket.send(bytes(METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n', 'utf-8') +
                            b'\r\n')
-        """
-        data = my_socket.recv(1024)
-        print('Recibido -- ', data.decode('utf-8'))
-        message_recivied = data.decode('utf-8').split(' ')
-        for elementos in message_recivied:
-            if METHOD != "BYE" and elementos == '200':
-                my_socket.send(bytes('ACK sip:' + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
-        print("Terminando socket...")
-        """
 print("Fin.")
