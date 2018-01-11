@@ -15,6 +15,27 @@ import time
 import random
 
 
+def password(user1):
+    with open(PATH_PSSWD, "r") as fichero:
+        psswd = None
+        for linea in fichero:
+            usuario_fichero = linea.split()[1]
+            print(usuario_fichero)
+            if user1 == usuario_fichero:
+                print('coinciden usuarios')
+                psswd = linea.split()[3]
+                print(psswd)
+                break
+        return psswd
+
+def checknonce(nonce_usuario, user1):
+    function_check = hashlib.md5()
+    function_check.update(bytes(str(nonce_usuario), 'utf-8'))
+    print('el nonce es: ' + str(nonce_usuario))
+    function_check.update(bytes(str((password(user1))), 'utf-8'))
+    print('la contraseña es: ' + str(password(user1)))
+    return function_check.hexdigest()
+
 class PROXYHandler(ContentHandler):
     dicc = {}
     def __init__(self):
@@ -40,27 +61,6 @@ class PROXYHandler(ContentHandler):
         parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
 
-def password(user1):
-    with open(PATH_PSSWD, "r") as fichero:
-        psswd = None
-        for linea in fichero:
-            usuario_fichero = linea.split()[1]
-            print(usuario_fichero)
-            if user1 == usuario_fichero:
-                print('coinciden usuarios')
-                psswd = linea.split()[3]
-                print(psswd)
-                break
-        return psswd
-
-def checknonce(nonce_usuario, user1):
-    function_check = hashlib.md5()
-    function_check.update(bytes(str(nonce_usuario), 'utf-8'))
-    print('el nonce es: ' + str(nonce_usuario))
-    function_check.update(bytes(str((password(user1))), 'utf-8'))
-    print('la contraseña es: ' + str(password(user1)))
-    return function_check.hexdigest()
-
 class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     """
     Echo server class
@@ -71,16 +71,30 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     def Log(path, accion, ip, puerto, mensaje):
         f = open(path, "a")
         if accion == 'abrir':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Starting...' + '\r\n')
+            mensaje = (time.strftime('%Y%m%d%H%M%S',
+                       time.gmtime(time.time())) + ' Starting...' + '\r\n')
+
         elif accion == 'recibir':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + ip + ':' + str(puerto) + ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
+            mensaje = (time.strftime('%Y%m%d%H%M%S',
+                       time.gmtime(time.time())) + ' Received from ' + ip +
+                       ':' + str(puerto) + ': ' +
+                       mensaje.replace('\r\n', ' ') + '\r\n')
+
         elif accion == 'enviar':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to '
-    + ip + ':' + str(puerto) + ': '  + mensaje.replace('\r\n', ' ') + '\r\n')
+            mensaje = (time.strftime('%Y%m%d%H%M%S',
+                       time.gmtime(time.time())) + ' Sent to ' + ip + ':' +
+                       str(puerto) + ': '  + mensaje.replace('\r\n', ' ') +
+                       '\r\n')
+
         elif accion == 'error':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error: ' + mensaje.replace('\r\n', ' ') + '\r\n')
+            mensaje = (time.strftime('%Y%m%d%H%M%S',
+                       time.gmtime(time.time())) + ' Error: ' +
+                       mensaje.replace('\r\n', ' ') + '\r\n')
+
         elif metodo == 'acabado':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Finishing.')
+            mensaje = (time.strftime('%Y%m%d%H%M%S',
+                       time.gmtime(time.time())) + ' Finishing.')
+
         f.write(mensaje)
         f.close()
 
@@ -112,8 +126,6 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
         for usuario in expirados:
             del self.dic_client[usuario]
 
-    
-
     def handle(self):
         """
         handle method of the server class
@@ -128,7 +140,8 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
             metodo = mensaje.split()[0]
             if metodo == 'REGISTER':
                 #path, accion, ip, puerto, mensaje
-                PROXYRegisterHandler.Log(LOG, 'recibir', IP_SERVER, PORT_SERVER, mensaje)
+                PROXYRegisterHandler.Log(LOG, 'recibir',
+                                         IP_SERVER, PORT_SERVER, mensaje)
                 t_expires = mensaje.split()[4]
                 print('t expires: ' + t_expires)
                 usuario = mensaje.split()[1].split(':')[1]
@@ -153,10 +166,12 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     if algo == 'Authorization':
                         print('tercera línea: ' + mensaje.split('\r\n')[2])
                         print('mensaje tiene Autorizacion: ' + algo)
-                        ua_response = mensaje.split('\r\n')[2].split()[2].split('"')[1]
+                        ua_response1 = mensaje.split('\r\n')[2]
+                        ua_response = ua_response1.split()[2].split('"')[1]
                         print('ua response: '+ ua_response)
                         try:
-                            pr_response = checknonce(self.dic_nonce[usuario], usuario)
+                            pr_response = checknonce(self.dic_nonce[usuario],
+                                                     usuario)
                             print('proxy response: ' + pr_response)
                             if ua_response == pr_response:
                                 print('son iguales')
@@ -168,37 +183,45 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                                 self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                             else:
                                 print('no coinciden')
-                                self.wfile.write(b"SIP/2.0 400 Bad Request\r\n\r\n")
+                                error400 = "SIP/2.0 400 Bad Request\r\n\r\n"
+                                self.wfile.write(berror400)
                         except KeyError:
-                            self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
+                            error404 = "SIP/2.0 404 User Not Found\r\n\r\n"
+                            self.wfile.write(berror404)
                     else:
                         print('no tercera linea')
                         nonce_num = random.randint(0000, 9999)
                         self.dic_nonce[usuario] = nonce_num
-                        error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW-Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
+                        error = ("SIP/2.0 401 Unauthorized\r\n" +
+                                 'WWW-Authenticate: Digest nonce="' +
+                                 str(self.dic_nonce[usuario]) + '"' +
+                                 '\r\n\r\n')
                         self.wfile.write(bytes(error, 'utf-8'))
 
             elif metodo == 'INVITE':
-                emite = mensaje.split('\r\n')[4].split()[0][2:] #client1
+                emite = mensaje.split('\r\n')[4].split()[0][2:] # client1
                 print('emite: ' + emite)
-                recibe = mensaje.split()[1].split(':')[1] #client2
+                recibe = mensaje.split()[1].split(':')[1] # client2
                 print('recibe: ' + str(recibe))
                 if emite in self.dic_client and recibe in self.dic_client:
                     print('usuarios en dic')
-                    recibe_ip = self.dic_client[recibe][0] #client2
+                    recibe_ip = self.dic_client[recibe][0] # client2
                     print('ip_recibe: ' + str(recibe_ip))
-                    emite_ip = self.dic_client[emite][0] #client1
+                    emite_ip = self.dic_client[emite][0] # client1
                     print('ip_envia: ' + str(emite_ip))
-                    recibe_port = self.dic_client[recibe][1] #client2
+                    recibe_port = self.dic_client[recibe][1] # client2
                     print('port_recibe: ' + str(recibe_port))
-                    emite_port = self.dic_client[emite][1] #client1
+                    emite_port = self.dic_client[emite][1] # client1
                     print('port_envia: ' + str(emite_port))
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        my_socket.connect((recibe_ip, int(recibe_port))) #client2
+                    with socket.socket(socket.AF_INET,
+                                       socket.SOCK_DGRAM) as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET,
+                                             socket.SO_REUSEADDR, 1)
+                        my_socket.connect((recibe_ip, int(recibe_port))) # client2
                         my_socket.send(bytes(mensaje, 'utf-8'))
                         data = my_socket.recv(1024)
-                        print('respuesta receptor a invite: ' + data.decode('utf-8'))
+                        print('respuesta receptor a invite: ' +
+                              data.decode('utf-8'))
                     self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
                 else:
                     print('no users dic')
@@ -214,8 +237,10 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     print('emite_ip: ' + ip_emite)
                     port_emite = self.dic_client[emite][1]
                     print('emite_port: ' + str(port_emite))
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    with socket.socket(socket.AF_INET,
+                                       socket.SOCK_DGRAM) as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET,
+                                             socket.SO_REUSEADDR, 1)
                         my_socket.connect((ip_emite, int(port_emite)))
                         my_socket.send(bytes(mensaje, 'utf-8'))
                 else:
@@ -223,20 +248,23 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
 
             elif metodo == 'BYE':
-                recibe = mensaje.split()[1].split(':')[1] #client2
+                recibe = mensaje.split()[1].split(':')[1] # client2
                 print('recibe: ' + str(recibe))
                 if recibe in self.dic_client:
                     print('receptor en dicc')
-                    ip_recibe = self.dic_client[recibe][0] #127.0.0.1
-                    port_recibe = self.dic_client[recibe][1] #6005
+                    ip_recibe = self.dic_client[recibe][0] # 127.0.0.1
+                    port_recibe = self.dic_client[recibe][1] # 6005
                     print('ip recibe: ' + ip_recibe)
                     print('port recibe: ' + str(port_recibe))
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    with socket.socket(socket.AF_INET,
+                                       socket.SOCK_DGRAM) as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET,
+                                             socket.SO_REUSEADDR, 1)
                         my_socket.connect((ip_recibe, int(port_recibe)))
                         my_socket.send(bytes(mensaje, 'utf-8'))
                         data = my_socket.recv(1024)
-                        print('respuesta de recibe en INVITE: ' + data.decode('utf-8'))
+                        print('respuesta de recibe en INVITE: ' +
+                              data.decode('utf-8'))
                     self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
                 else:
                     print('no users dic')
@@ -262,11 +290,14 @@ if __name__ == "__main__":
     PATH_PSSWD = PROXYHandler.dicc['database_passwdpath']
     LOG = PROXYHandler.dicc['log_path']
 
-    #path, accion, ip, puerto, mensaje
+    # path, accion, ip, puerto, mensaje
     PROXYRegisterHandler.Log(LOG, 'abrir', None, None, None)
 
-    serv = socketserver.UDPServer((IP_SERVER, PORT_SERVER), PROXYRegisterHandler)
-    print("Server " + NAME_SERVER + " listening at port " + str(PORT_SERVER) + "...")
+    serv = socketserver.UDPServer((IP_SERVER, PORT_SERVER),
+                                   PROXYRegisterHandler)
+    print("Server " + NAME_SERVER + " listening at port " +
+          str(PORT_SERVER) + "...")
+
     try:
         serv.serve_forever()
     except KeyboardInterrupt:

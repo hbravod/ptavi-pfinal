@@ -13,17 +13,48 @@ import sys
 import time
 
 
+def checknonce(nonce):
+    function_check = hashlib.md5()
+    function_check.update(bytes(str(nonce), 'utf-8'))
+    print('el nonce es: ' + str(nonce))
+    function_check.update(bytes(str(PASSWD), 'utf-8'))
+    print('la pass es: ' + str(PASSWD))
+    print('cliente: ' + function_check.hexdigest())
+    return function_check.hexdigest()
+
+def Log(path, accion, ip, puerto, mensaje):
+    f = open(path, "a")
+    if accion == 'abrir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Starting...' + '\r\n')
+    elif accion == 'recibir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Received from ' + ip + ':' + str(puerto) +
+                   ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
+    elif accion == 'enviar':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Sent to ' + ip + ':' + str(puerto) + ': ' +
+                   mensaje.replace('\r\n', ' ') + '\r\n')
+    elif Accion == 'error':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Error: ' + mensaje.replace('\r\n', ' ') +
+                   '\r\n')
+    elif metodo == 'acabado':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Finishing.')
+    f.write(mensaje)
+    f.close()
+
 class XMLHandler(ContentHandler):
     dicc = {}
     def __init__(self):
-
         self.labels = {'account': ['username', 'passwd'],
                        'uaserver': ['ip', 'puerto'],
                        'rtpaudio': ['puerto'],
                        'regproxy': ['ip', 'puerto'],
                        'log': ['path'],
                        'audio': ['path']
-                      }
+                       }
 
     def startElement(self, name, attrs):
 
@@ -41,31 +72,6 @@ class XMLHandler(ContentHandler):
         parser.parse(open(sys.argv[1]))
         confdict = cHandler.get_tags()
 
-def checknonce(nonce):
-    function_check = hashlib.md5()
-    function_check.update(bytes(str(nonce), 'utf-8'))
-    print('el nonce es: ' + str(nonce))
-    function_check.update(bytes(str(PASSWD), 'utf-8'))
-    print('la pass es: ' + str(PASSWD))
-    print('cliente: ' + function_check.hexdigest())
-    return function_check.hexdigest()
-
-def Log(path, accion, ip, puerto, mensaje):
-    f = open(path, "a")
-    if accion == 'abrir':
-        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Starting...' + '\r\n')
-    elif accion == 'recibir':
-        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + ip + ':' + str(puerto) + ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
-    elif accion == 'enviar':
-        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to '
-+ ip + ':' + str(puerto) + ': '  + mensaje.replace('\r\n', ' ') + '\r\n')
-    elif Accion == 'error':
-        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error: ' + mensaje.replace('\r\n', ' ') + '\r\n')
-    elif metodo == 'acabado':
-        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Finishing.')
-    f.write(mensaje) 
-    f.close() 
-
 if __name__ == "__main__":
 
     if len(sys.argv) != 4:
@@ -77,7 +83,7 @@ if __name__ == "__main__":
 
     XMLHandler.elparser()
 
-    if XMLHandler.dicc['regproxy_ip'] == None:
+    if XMLHandler.dicc['regproxy_ip'] is None:
         IP_PROXY = '127.0.0.1'
     else:
         IP_PROXY = XMLHandler.dicc['regproxy_ip']
@@ -97,20 +103,27 @@ if __name__ == "__main__":
         my_socket.connect((IP_PROXY, PORT_PROXY))
 
         if METHOD == "REGISTER":
-            mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_USER)+ 
-                       ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n\r\n')
+            mensaje = (METHOD + ' sip:' + USER + ':' + str(PORT_USER) +
+                       ' SIP/2.0\r\nExpires: ' + str(OPTION) + '\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+            #try:
             data = my_socket.recv(1024)
             print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8')
             print('recibo del proxy: ' + message_recivied)
+            #except ConnectionRefusedError:
+                #exit('Error: No server listening at ' + IP_PROXY + ' port ' str(IP_PORT))
             if '401' in message_recivied:
                 print(message_recivied)
                 nonce = message_recivied.split()[5].split('"')[1]
                 print(nonce)
                 respuesta = checknonce(nonce)
                 print('respuesta: ' + respuesta)
-                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" + str(PORT_USER) +' SIP/2.0\r\n' + 'Expires: ' + str(OPTION) + '\r\n' + 'Authorization: Digest response="' + respuesta + '"', 'utf-8'))
+                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" +
+                               str(PORT_USER) + ' SIP/2.0\r\n' + 'Expires: ' +
+                               str(OPTION) + '\r\n' +
+                               'Authorization: Digest response="' + respuesta +
+                               '"' + '\r\n\r\n', 'utf-8'))
                 my_socket.connect((IP_PROXY, PORT_PROXY))
                 data = my_socket.recv(1024)
                 message_recivied = data.decode('utf-8')
@@ -126,17 +139,19 @@ if __name__ == "__main__":
                 print(data.decode('utf-8'))
 
         elif METHOD == "INVITE":
-            mensaje = (METHOD + ' sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
-                       'application/sdp\r\n\r\n'+'v=0\r\n'+
-                       'o='+USER+' '+IP_USER+'\r\n'+'s=misesion\r\n'+
-                       't=0\r\n'+'m=audio'+' '+str(PORT_CANCION)+' '+'RTP')
+            mensaje = (METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n' +
+                       'Content-Type: ' +
+                       'application/sdp\r\n\r\n' + 'v=0\r\n' +
+                       'o=' + USER + ' ' + IP_USER + '\r\n' +
+                       's=misesion\r\n' + 't=0\r\n' + 'm=audio' +
+                       ' ' + str(PORT_CANCION) + ' ' + 'RTP')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
             print('mensaje que envia: ' + mensaje)
 
             data = my_socket.recv(1024)
             print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8').split()
-            print('mensaje recibido:'+ '\r\n' + data.decode('utf-8'))
+            print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
 
             if '100' in message_recivied:
                 print('recibo 100, 180, 200')
@@ -147,9 +162,11 @@ if __name__ == "__main__":
                 port_receptor = message_recivied[17]
                 print('port_receptor: ' + port_receptor)
 
-                my_socket.send(bytes('ACK sip:' + user_receptor + ' SIP/2.0\r\n', 'utf-8'))
+                my_socket.send(bytes('ACK sip:' + user_receptor +
+                               ' SIP/2.0\r\n', 'utf-8'))
 
-                aEjecutar = './mp32rtp -i ' + ip_receptor + ' -p ' + str(port_receptor) + ' < ' + CANCION
+                aEjecutar = ('./mp32rtp -i ' + ip_receptor + ' -p ' +
+                             str(port_receptor) + ' < ' + CANCION)
                 print("Vamos a ejecutar", aEjecutar)
                 os.system(aEjecutar)
                 print('Acabao')
@@ -164,12 +181,13 @@ if __name__ == "__main__":
                 print(data.decode('utf-8'))
 
         elif METHOD == "BYE":
-            my_socket.send(bytes(METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+            my_socket.send(bytes(METHOD + ' sip:' + OPTION +
+                           ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
 
             data = my_socket.recv(1024)
             print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8').split()
-            print('mensaje recibido:'+ '\r\n' + data.decode('utf-8'))
+            print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
 
             if '400' in message_recivied:
                 print(data.decode('utf-8'))
