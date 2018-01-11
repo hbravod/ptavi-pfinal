@@ -18,7 +18,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
     """
     Echo server class
     """
-    dicc_rtp = {}
+    dicc_rtp = {} #dicc con clave ip y valor puerto
 
     def error(self, line):
         line_errores = line.split(' ')
@@ -35,11 +35,27 @@ class EchoHandler(socketserver.DatagramRequestHandler):
 
     def BuscaPuerto(self, ip):
         for usuario in self.dicc_rtp:
-            puerto = PORT_CANCION
             if ip == usuario:
                 puerto = self.dicc_rtp[usuario]
                 break
         return puerto
+
+    def Log(path, accion, ip, puerto, mensaje):
+        f = open(path, "a")
+        if accion == 'abrir':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Starting...' + '\r\n')
+        elif accion == 'recibir':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + ip + ':' + str(port) + ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
+        elif accion == 'enviar':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to '
+    + ip + ':' + str(port) + ': '  + mensaje.replace('\r\n', ' ') + '\r\n')
+        
+        elif Accion == 'error':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error: ' + mensaje.replace('\r\n', ' ') + '\r\n')
+        elif metodo == 'acabado':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Finishing.')
+        f.write(mensaje) 
+        f.close()
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -52,7 +68,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             print(mensaje)
             method = mensaje.split(' ')[0]
             print('metodo: ' + str(method))
-
+            #Log(LOG, mensaje, 'recibir')
             if not mensaje:
                 break
 
@@ -60,9 +76,9 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed \r\n\r\n")
 
             if method == 'INVITE':
-                ip_emite = mensaje.split(' ')[4]
-                print('emite_ip: ' + ip_emite)
-                port_emite = mensaje.split(' ')[5]
+                ip_emite = mensaje.split()[7]
+                print('emite_ip: "' + ip_emite + '"')
+                port_emite = mensaje.split()[11]
                 print('emite_port: ' + port_emite)
                 self.dicc_rtp[ip_emite] = port_emite
                 self.wfile.write(bytes("SIP/2.0 100 Trying \r\n\r\n" +
@@ -79,7 +95,6 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 print('emite_ip: ' + ip_emite)    
                 port_emite = self.BuscaPuerto(ip_emite)
                 print('emite_port: ' + str(port_emite))
-
                 aEjecutar = './mp32rtp -i ' + ip_emite + ' -p ' + str(port_emite) + ' < ' + CANCION
                 print("Vamos a ejecutar", aEjecutar)
                 os.system(aEjecutar)

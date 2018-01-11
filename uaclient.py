@@ -50,17 +50,21 @@ def checknonce(nonce):
     print('cliente: ' + function_check.hexdigest())
     return function_check.hexdigest()
 
-def Log(path, mensaje, accion):
-        f = open(path, "a")
-        if accion == 'recibir':
-            Mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + mensaje.replace('\r\n', ' ') + '\r\n'
-        elif accion == 'enviar':
-            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to ' + mensaje.replace('\r\n', ' ') + '\r\n'
-        elif Accion == 'error':
-            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error ' + mensaje.replace('\r\n', ' ') + '\r\n'
-        f.write(mensaje) 
-        f.close()
-        
+def Log(path, accion, ip, puerto, mensaje):
+    f = open(path, "a")
+    if accion == 'abrir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Starting...' + '\r\n')
+    elif accion == 'recibir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + ip + ':' + str(puerto) + ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
+    elif accion == 'enviar':
+        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to '
++ ip + ':' + str(puerto) + ': '  + mensaje.replace('\r\n', ' ') + '\r\n')
+    elif Accion == 'error':
+        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error: ' + mensaje.replace('\r\n', ' ') + '\r\n')
+    elif metodo == 'acabado':
+        mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Finishing.')
+    f.write(mensaje) 
+    f.close() 
 
 if __name__ == "__main__":
 
@@ -96,16 +100,13 @@ if __name__ == "__main__":
             mensaje = (METHOD + ' sip:'+USER+':'+str(PORT_USER)+ 
                        ' SIP/2.0\r\nExpires: ' +str(OPTION)+'\r\n\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
-
-
-
             data = my_socket.recv(1024)
             print('Recibido -- ' + data.decode('utf-8'))
             message_recivied = data.decode('utf-8')
             print('recibo del proxy: ' + message_recivied)
             if '401' in message_recivied:
                 print(message_recivied)
-                nonce = message_recivied.split('\r\n')[1].split()[3].split('"')[1]
+                nonce = message_recivied.split()[5].split('"')[1]
                 print(nonce)
                 respuesta = checknonce(nonce)
                 print('respuesta: ' + respuesta)
@@ -114,6 +115,15 @@ if __name__ == "__main__":
                 data = my_socket.recv(1024)
                 message_recivied = data.decode('utf-8')
                 print(message_recivied)
+
+            elif '400' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '404' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '405' in message_recivied:
+                print(data.decode('utf-8'))
 
         elif METHOD == "INVITE":
             mensaje = (METHOD + ' sip:'+OPTION+' SIP/2.0\r\n'+'Content-Type: '+
@@ -143,7 +153,24 @@ if __name__ == "__main__":
                 print("Vamos a ejecutar", aEjecutar)
                 os.system(aEjecutar)
                 print('Acabao')
-            """
+
+            elif '400' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '404' in message_recivied:
+                print(data.decode('utf-8'))
+
+            elif '405' in message_recivied:
+                print(data.decode('utf-8'))
+
+        elif METHOD == "BYE":
+            my_socket.send(bytes(METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+
+            data = my_socket.recv(1024)
+            print('Recibido -- ' + data.decode('utf-8'))
+            message_recivied = data.decode('utf-8').split()
+            print('mensaje recibido:'+ '\r\n' + data.decode('utf-8'))
+
             if '400' in message_recivied:
                 print(data.decode('utf-8'))
 
@@ -152,9 +179,5 @@ if __name__ == "__main__":
 
             elif '405' in message_recivied:
                 print(data.decode('utf-8'))
-            """
 
-        elif METHOD == "BYE":
-            my_socket.send(bytes(METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n', 'utf-8') +
-                           b'\r\n')
 print("Fin.")

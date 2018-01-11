@@ -68,15 +68,20 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
     dic_client = {}
     dic_nonce = {}
 
-def Log(path, mensaje, accion):
+    def Log(path, accion, ip, puerto, mensaje):
         f = open(path, "a")
-        if accion == 'recibir':
-            Mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + mensaje.replace('\r\n', ' ') + '\r\n'
+        if accion == 'abrir':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Starting...' + '\r\n')
+        elif accion == 'recibir':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time()))+ ' Received from ' + ip + ':' + str(puerto) + ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
         elif accion == 'enviar':
-            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to ' + mensaje.replace('\r\n', ' ') + '\r\n'
-        elif Accion == 'error':
-            mensaje = time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error ' + mensaje.replace('\r\n', ' ') + '\r\n'
-        f.write(mensaje) 
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Sent to '
+    + ip + ':' + str(puerto) + ': '  + mensaje.replace('\r\n', ' ') + '\r\n')
+        elif accion == 'error':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Error: ' + mensaje.replace('\r\n', ' ') + '\r\n')
+        elif metodo == 'acabado':
+            mensaje = (time.strftime('%Y%m%d%H%M%S',time.gmtime(time.time())) + ' Finishing.')
+        f.write(mensaje)
         f.close()
 
     def BaseDatos(self, path):
@@ -89,8 +94,8 @@ def Log(path, mensaje, accion):
             for usuario in self.dic_client:
                 linea = (usuario + ' ' + self.dic_client[usuario][0] + ' ' +
                          str(self.dic_client[usuario][1]) + ' ' + 
-                         self.dic_client[usuario][2] + ' ' +
-                         self.dic_client[usuario][3] + '\r\n')
+                         str(self.dic_client[usuario][2]) + ' ' +
+                         str(self.dic_client[usuario][3]) + '\r\n')
                 fich.write(linea)
 
 
@@ -99,7 +104,8 @@ def Log(path, mensaje, accion):
         Darse de baja en el servidor.
         """
         expirados = []
-        time_act = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
+        time_act = time.time()
+        print(time_act)
         for usuario in self.dic_client:
             if self.dic_client[usuario][3] < time_act:
                 expirados.append(usuario)
@@ -121,6 +127,8 @@ def Log(path, mensaje, accion):
             print('mensaje: ' + mensaje)
             metodo = mensaje.split()[0]
             if metodo == 'REGISTER':
+                #path, accion, ip, puerto, mensaje
+                PROXYRegisterHandler.Log(LOG, 'recibir', IP_SERVER, PORT_SERVER, mensaje)
                 t_expires = mensaje.split()[4]
                 print('t expires: ' + t_expires)
                 usuario = mensaje.split()[1].split(':')[1]
@@ -133,9 +141,7 @@ def Log(path, mensaje, accion):
                 if usuario in self.dic_client:
                     print('usuario en dicc')
                     if t_expires != '0':
-                        t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                 time.gmtime(time.time() + 
-                                                 int(t_expires)))
+                        t_expire = time.time() + int(t_expires)
                         self.dic_client[usuario][3] = t_expire
                         self.BaseDatos(PATH_BASEDATOS)
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
@@ -154,11 +160,8 @@ def Log(path, mensaje, accion):
                             print('proxy response: ' + pr_response)
                             if ua_response == pr_response:
                                 print('son iguales')
-                                t_regist = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                         time.gmtime(time.time()))
-                                t_expire = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                    time.gmtime(time.time() + 
-                                                    int(t_expires)))
+                                t_regist = time.time()
+                                t_expire = time.time() + int(t_expires)
                                 self.dic_client[usuario] = [direccion, puerto, 
                                                             t_regist, t_expire]
                                 self.BaseDatos(PATH_BASEDATOS)
@@ -172,7 +175,7 @@ def Log(path, mensaje, accion):
                         print('no tercera linea')
                         nonce_num = random.randint(0000, 9999)
                         self.dic_nonce[usuario] = nonce_num
-                        error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
+                        error = "SIP/2.0 401 Unauthorized\r\n" + 'WWW-Authenticate: Digest nonce="' + str(self.dic_nonce[usuario]) + '"' + '\r\n\r\n'
                         self.wfile.write(bytes(error, 'utf-8'))
 
             elif metodo == 'INVITE':
@@ -257,7 +260,10 @@ if __name__ == "__main__":
     IP_SERVER = PROXYHandler.dicc['server_ip']
     PATH_BASEDATOS = PROXYHandler.dicc['database_path']
     PATH_PSSWD = PROXYHandler.dicc['database_passwdpath']
-    PATH_LOG = PROXYHandler.dicc['log_path']
+    LOG = PROXYHandler.dicc['log_path']
+
+    #path, accion, ip, puerto, mensaje
+    PROXYRegisterHandler.Log(LOG, 'abrir', None, None, None)
 
     serv = socketserver.UDPServer((IP_SERVER, PORT_SERVER), PROXYRegisterHandler)
     print("Server " + NAME_SERVER + " listening at port " + str(PORT_SERVER) + "...")
