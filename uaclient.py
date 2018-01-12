@@ -106,38 +106,39 @@ if __name__ == "__main__":
             mensaje = (METHOD + ' sip:' + USER + ':' + str(PORT_USER) +
                        ' SIP/2.0\r\nExpires: ' + str(OPTION) + '\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
-            #try:
-            data = my_socket.recv(1024)
-            print('Recibido -- ' + data.decode('utf-8'))
-            message_recivied = data.decode('utf-8')
-            print('recibo del proxy: ' + message_recivied)
-            #except ConnectionRefusedError:
-                #exit('Error: No server listening at ' + IP_PROXY + ' port ' str(IP_PORT))
-            if '401' in message_recivied:
-                print(message_recivied)
-                nonce = message_recivied.split()[5].split('"')[1]
-                print(nonce)
-                respuesta = checknonce(nonce)
-                print('respuesta: ' + respuesta)
-                my_socket.send(bytes(METHOD + ' sip:' + USER + ":" +
-                               str(PORT_USER) + ' SIP/2.0\r\n' + 'Expires: ' +
-                               str(OPTION) + '\r\n' +
-                               'Authorization: Digest response="' + respuesta +
-                               '"' + '\r\n\r\n', 'utf-8'))
-                my_socket.connect((IP_PROXY, PORT_PROXY))
+            try:
                 data = my_socket.recv(1024)
+                print('Recibido -- ' + data.decode('utf-8'))
                 message_recivied = data.decode('utf-8')
-                print(message_recivied)
+                print('recibo del proxy: ' + message_recivied)
+                if '401' in message_recivied:
+                    print(message_recivied)
+                    nonce = message_recivied.split()[5].split('"')[1]
+                    print(nonce)
+                    respuesta = checknonce(nonce)
+                    print('respuesta: ' + respuesta)
+                    my_socket.send(bytes(METHOD + ' sip:' + USER + ":" +
+                                   str(PORT_USER) + ' SIP/2.0\r\n' +
+                                   'Expires: ' + str(OPTION) + '\r\n' +
+                                   'Authorization: Digest response="' +
+                                   respuesta +
+                                   '"' + '\r\n\r\n', 'utf-8'))
+                    my_socket.connect((IP_PROXY, PORT_PROXY))
+                    data = my_socket.recv(1024)
+                    message_recivied = data.decode('utf-8')
+                    print(message_recivied)
 
-            elif '400' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '400' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '404' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '404' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '405' in message_recivied:
-                print(data.decode('utf-8'))
-
+                elif '405' in message_recivied:
+                    print(data.decode('utf-8'))
+            except ConnectionRefusedError:
+                exit('Error: No server listening at ' + IP_PROXY + ' port ' +
+                     str(PORT_PROXY))
         elif METHOD == "INVITE":
             mensaje = (METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n' +
                        'Content-Type: ' +
@@ -145,57 +146,67 @@ if __name__ == "__main__":
                        'o=' + USER + ' ' + IP_USER + '\r\n' +
                        's=misesion\r\n' + 't=0\r\n' + 'm=audio' +
                        ' ' + str(PORT_CANCION) + ' ' + 'RTP')
+            
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
             print('mensaje que envia: ' + mensaje)
 
-            data = my_socket.recv(1024)
-            print('Recibido -- ' + data.decode('utf-8'))
-            message_recivied = data.decode('utf-8').split()
-            print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
+            try:
+                data = my_socket.recv(1024)
+                print('Recibido -- ' + data.decode('utf-8'))
+                message_recivied = data.decode('utf-8').split()
+                print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
 
-            if '100' in message_recivied:
-                print('recibo 100, 180, 200')
-                user_receptor = message_recivied[12].split('=')[1]
-                print('user_receptor: ' + user_receptor)
-                ip_receptor = message_recivied[13]
-                print('ip_receptor: ' + ip_receptor)
-                port_receptor = message_recivied[17]
-                print('port_receptor: ' + port_receptor)
+                if '100' in message_recivied:
+                    print('recibo 100, 180, 200')
+                    user_receptor = message_recivied[12].split('=')[1]
+                    print('user_receptor: ' + user_receptor)
+                    ip_receptor = message_recivied[13]
+                    print('ip_receptor: ' + ip_receptor)
+                    port_receptor = message_recivied[17]
+                    print('port_receptor: ' + port_receptor)
 
-                my_socket.send(bytes('ACK sip:' + user_receptor +
-                               ' SIP/2.0\r\n', 'utf-8'))
+                    my_socket.send(bytes('ACK sip:' + user_receptor +
+                                   ' SIP/2.0\r\n', 'utf-8'))
 
-                aEjecutar = ('./mp32rtp -i ' + ip_receptor + ' -p ' +
-                             str(port_receptor) + ' < ' + CANCION)
-                print("Vamos a ejecutar", aEjecutar)
-                os.system(aEjecutar)
-                print('Acabao')
+                    aEjecutar = ('./mp32rtp -i ' + ip_receptor + ' -p ' +
+                                 str(port_receptor) + ' < ' + CANCION)
+                    print("Vamos a ejecutar", aEjecutar)
+                    os.system(aEjecutar)
+                    print('Acabao')
 
-            elif '400' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '400' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '404' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '404' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '405' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '405' in message_recivied:
+                    print(data.decode('utf-8'))
+
+            except ConnectionRefusedError:
+                exit('Error: No server listening at ' + IP_PROXY + ' port ' +
+                     str(PORT_PROXY))
 
         elif METHOD == "BYE":
             my_socket.send(bytes(METHOD + ' sip:' + OPTION +
                            ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
 
-            data = my_socket.recv(1024)
-            print('Recibido -- ' + data.decode('utf-8'))
-            message_recivied = data.decode('utf-8').split()
-            print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
+            try:
+                data = my_socket.recv(1024)
+                print('Recibido -- ' + data.decode('utf-8'))
+                message_recivied = data.decode('utf-8').split()
+                print('mensaje recibido:' + '\r\n' + data.decode('utf-8'))
 
-            if '400' in message_recivied:
-                print(data.decode('utf-8'))
+                if '400' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '404' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '404' in message_recivied:
+                    print(data.decode('utf-8'))
 
-            elif '405' in message_recivied:
-                print(data.decode('utf-8'))
+                elif '405' in message_recivied:
+                    print(data.decode('utf-8'))
 
+            except ConnectionRefusedError:
+                exit('Error: No server listening at ' + IP_PROXY + ' port ' +
+                     str(PORT_PROXY))
 print("Fin.")

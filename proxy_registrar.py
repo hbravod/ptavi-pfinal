@@ -213,16 +213,21 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     print('port_recibe: ' + str(recibe_port))
                     emite_port = self.dic_client[emite][1] # client1
                     print('port_envia: ' + str(emite_port))
-                    with socket.socket(socket.AF_INET,
-                                       socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET,
-                                             socket.SO_REUSEADDR, 1)
-                        my_socket.connect((recibe_ip, int(recibe_port))) # client2
-                        my_socket.send(bytes(mensaje, 'utf-8'))
-                        data = my_socket.recv(1024)
-                        print('respuesta receptor a invite: ' +
-                              data.decode('utf-8'))
-                    self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
+                    try:
+                        with socket.socket(socket.AF_INET,
+                                           socket.SOCK_DGRAM) as my_socket:
+                            my_socket.setsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_REUSEADDR, 1)
+                            my_socket.connect((recibe_ip, int(recibe_port))) # client2
+                            my_socket.send(bytes(mensaje, 'utf-8'))
+                            data = my_socket.recv(1024)
+                            print('respuesta receptor a invite: ' +
+                                  data.decode('utf-8'))
+                        self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
+                    except ConnectionRefusedError:
+                        print('Error: No server listening at ' + recibe_ip + ' port ' +
+                             str(recibe_port))
+                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
                 else:
                     print('no users dic')
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
@@ -237,12 +242,17 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     print('emite_ip: ' + ip_emite)
                     port_emite = self.dic_client[emite][1]
                     print('emite_port: ' + str(port_emite))
-                    with socket.socket(socket.AF_INET,
-                                       socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET,
-                                             socket.SO_REUSEADDR, 1)
-                        my_socket.connect((ip_emite, int(port_emite)))
-                        my_socket.send(bytes(mensaje, 'utf-8'))
+                    try:
+                        with socket.socket(socket.AF_INET,
+                                           socket.SOCK_DGRAM) as my_socket:
+                            my_socket.setsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_REUSEADDR, 1)
+                            my_socket.connect((ip_emite, int(port_emite)))
+                            my_socket.send(bytes(mensaje, 'utf-8'))
+                    except ConnectionRefusedError:
+                        print('Error: No server listening at ' + ip_emite + ' port ' +
+                             str(port_emite))
+                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
                 else:
                     print('no users dic')
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
@@ -256,16 +266,21 @@ class PROXYRegisterHandler(socketserver.DatagramRequestHandler):
                     port_recibe = self.dic_client[recibe][1] # 6005
                     print('ip recibe: ' + ip_recibe)
                     print('port recibe: ' + str(port_recibe))
-                    with socket.socket(socket.AF_INET,
-                                       socket.SOCK_DGRAM) as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET,
-                                             socket.SO_REUSEADDR, 1)
-                        my_socket.connect((ip_recibe, int(port_recibe)))
-                        my_socket.send(bytes(mensaje, 'utf-8'))
-                        data = my_socket.recv(1024)
-                        print('respuesta de recibe en INVITE: ' +
-                              data.decode('utf-8'))
-                    self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
+                    try:
+                        with socket.socket(socket.AF_INET,
+                                           socket.SOCK_DGRAM) as my_socket:
+                            my_socket.setsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_REUSEADDR, 1)
+                            my_socket.connect((ip_recibe, int(port_recibe)))
+                            my_socket.send(bytes(mensaje, 'utf-8'))
+                            data = my_socket.recv(1024)
+                            print('respuesta de recibe en INVITE: ' +
+                                  data.decode('utf-8'))
+                        self.wfile.write(bytes(data.decode('utf-8'), 'utf-8'))
+                    except ConnectionRefusedError:
+                        print('Error: No server listening at ' + ip_recibe + ' port ' +
+                             str(port_recibe))
+                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
                 else:
                     print('no users dic')
                     self.wfile.write(b"SIP/2.0 404 User Not Found\r\n\r\n")
