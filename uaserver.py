@@ -14,6 +14,30 @@ import sys
 import time
 
 
+def Log(path, accion, ip, puerto, mensaje):
+    f = open(path, "a")
+    if accion == 'abrir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Starting...' + '\r\n')
+    elif accion == 'recibir':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Received from ' + ip + ':' + str(puerto) +
+                   ': ' + mensaje.replace('\r\n', ' ') + '\r\n')
+    elif accion == 'enviar':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Sent to ' + ip + ':' + str(puerto) + ': ' +
+                   mensaje.replace('\r\n', ' ') + '\r\n')
+    elif accion == 'error':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Error: ' + mensaje.replace('\r\n', ' ') +
+                   '\r\n')
+    elif accion == 'acabado':
+        mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
+                   ' Finishing.' + '\r\n')
+    f.write(mensaje)
+    f.close()
+
+
 class EchoHandler(socketserver.DatagramRequestHandler):
     """
     Echo server class
@@ -40,34 +64,6 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 break
         return puerto
 
-    def Log(path, accion, ip, puerto, mensaje):
-        f = open(path, "a")
-        if accion == 'abrir':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',
-                       time.gmtime(time.time())) + ' Starting...' + '\r\n')
-
-        elif accion == 'recibir':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',
-                       time.gmtime(time.time())) + ' Received from ' + ip +
-                       ':' + str(port) + ': ' + mensaje.replace('\r\n', ' ') +
-                       '\r\n')
-
-        elif accion == 'enviar':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',
-                       time.gmtime(time.time())) + ' Sent to ' + ip + ':' +
-                       str(port) + ': ' + mensaje.replace('\r\n', ' ') +
-                       '\r\n')
-
-        elif Accion == 'error':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',
-                       time.gmtime(time.time())) + ' Error: ' +
-                       mensaje.replace('\r\n', ' ') + '\r\n')
-
-        elif metodo == 'acabado':
-            mensaje = (time.strftime('%Y%m%d%H%M%S',
-                       time.gmtime(time.time())) + ' Finishing.')
-        f.write(mensaje)
-        f.close()
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -86,23 +82,26 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             if method not in lista:
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed \r\n\r\n")
 
+            Log(LOG, 'recibir', IP_PROXY, IP_PROXY, mensaje)
             if method == 'INVITE':
                 ip_emite = mensaje.split()[7]
                 print('emite_ip: "' + ip_emite + '"')
                 port_emite = mensaje.split()[11]
                 print('emite_port: ' + port_emite)
                 self.dicc_rtp[ip_emite] = port_emite
-                self.wfile.write(bytes("SIP/2.0 100 Trying \r\n\r\n" +
-                                       "SIP/2.0 180 Ringing \r\n\r\n" +
-                                       "SIP/2.0 200 OK \r\n" +
-                                       'Content-Type: ' +
-                                       'application/sdp\r\n\r\n' +
-                                       'v=0\r\n' + 'o=' + USER + ' ' +
-                                       str(IP_USER) + '\r\n' +
-                                       's=misesion\r\n' +
-                                       't=0\r\n'+'m=audio' + ' ' +
-                                       str(PORT_CANCION) + ' ' +
-                                       'RTP\r\n', 'utf-8'))
+                RTP = ("SIP/2.0 100 Trying \r\n\r\n" +
+                       "SIP/2.0 180 Ringing \r\n\r\n" +
+                       "SIP/2.0 200 OK \r\n" +
+                       'Content-Type: ' +
+                       'application/sdp\r\n\r\n' +
+                       'v=0\r\n' + 'o=' + USER + ' ' +
+                       str(IP_USER) + '\r\n' +
+                       's=misesion\r\n' +
+                       't=0\r\n'+'m=audio' + ' ' +
+                       str(PORT_CANCION) + ' ' +
+                       'RTP\r\n')
+                self.wfile.write(bytes(RTP, 'utf-8'))
+                Log(LOG, 'enviar', IP_PROXY, PORT_PROXY, RTP)
 
             elif method == lista[1]:
                 ip_emite = self.client_address[0]
@@ -114,12 +113,15 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 print("Vamos a ejecutar", aEjecutar)
                 os.system(aEjecutar)
                 print('acabao')
+                Log(LOG, 'enviar', ip_emite, port_emite, ("Vamos a ejecutar" + aEjecutar))
 
             elif method == lista[2]:
                 self.wfile.write(b"SIP/2.0 200 OK \r\n\r\n")
+                Log(LOG, 'enviar', IP_PROXY, PORT_PROXY, "SIP/2.0 200 OK \r\n\r\n")
 
             elif self.error(mensaje):
                 self.wfile.write(b"SIP/2.0 400 Bad Request \r\n\r\n")
+                Log(LOG, 'enviar', IP_PROXY, PORT_PROXY, "SIP/2.0 400 Bad Request \r\n\r\n")
 
 
 if __name__ == "__main__":
@@ -137,12 +139,12 @@ if __name__ == "__main__":
     CANCION = XMLHandler.dicc['audio_path']
     LOG = XMLHandler.dicc['log_path']
 
+    Log(LOG, 'abrir', None, None, None)
     # Creamos servidor de eco y escuchamos
     try:
         SERV = socketserver.UDPServer((IP_USER, PORT_USER), EchoHandler)
         print("Listening...")
         SERV.serve_forever()
-        # path, accion, ip, puerto, mensaje
-        Log(LOG, 'abrir', None, None, None)
     except KeyboardInterrupt:
+        Log(LOG, 'acabado', None, None, None)
         print('Server Cancelled')

@@ -13,15 +13,6 @@ import sys
 import time
 
 
-def checknonce(nonce):
-    function_check = hashlib.md5()
-    function_check.update(bytes(str(nonce), 'utf-8'))
-    print('el nonce es: ' + str(nonce))
-    function_check.update(bytes(str(PASSWD), 'utf-8'))
-    print('la pass es: ' + str(PASSWD))
-    print('cliente: ' + function_check.hexdigest())
-    return function_check.hexdigest()
-
 def Log(path, accion, ip, puerto, mensaje):
     f = open(path, "a")
     if accion == 'abrir':
@@ -35,15 +26,25 @@ def Log(path, accion, ip, puerto, mensaje):
         mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
                    ' Sent to ' + ip + ':' + str(puerto) + ': ' +
                    mensaje.replace('\r\n', ' ') + '\r\n')
-    elif Accion == 'error':
+    elif accion == 'error':
         mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
                    ' Error: ' + mensaje.replace('\r\n', ' ') +
                    '\r\n')
-    elif metodo == 'acabado':
+    elif accion == 'acabado':
         mensaje = (time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time())) +
-                   ' Finishing.')
+                   ' Finishing.' + '\r\n')
     f.write(mensaje)
     f.close()
+
+def checknonce(nonce):
+    function_check = hashlib.md5()
+    function_check.update(bytes(str(nonce), 'utf-8'))
+    print('el nonce es: ' + str(nonce))
+    function_check.update(bytes(str(PASSWD), 'utf-8'))
+    print('la pass es: ' + str(PASSWD))
+    print('cliente: ' + function_check.hexdigest())
+    return function_check.hexdigest()
+
 
 class XMLHandler(ContentHandler):
     dicc = {}
@@ -106,11 +107,13 @@ if __name__ == "__main__":
             mensaje = (METHOD + ' sip:' + USER + ':' + str(PORT_USER) +
                        ' SIP/2.0\r\nExpires: ' + str(OPTION) + '\r\n')
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
-            try:
+            Log(LOG, 'enviar', IP_PROXY, PORT_PROXY, mensaje)
+            try: 
                 data = my_socket.recv(1024)
                 print('Recibido -- ' + data.decode('utf-8'))
                 message_recivied = data.decode('utf-8')
                 print('recibo del proxy: ' + message_recivied)
+                Log(LOG, 'recibir', IP_PROXY, PORT_PROXY, message_recivied)
                 if '401' in message_recivied:
                     print(message_recivied)
                     nonce = message_recivied.split()[5].split('"')[1]
@@ -123,10 +126,19 @@ if __name__ == "__main__":
                                    'Authorization: Digest response="' +
                                    respuesta +
                                    '"' + '\r\n\r\n', 'utf-8'))
+                    Log(LOG, 'enviar', IP_PROXY, PORT_PROXY,
+                        METHOD + ' sip:' + USER + ":" +
+                        str(PORT_USER) + ' SIP/2.0\r\n' +
+                        'Expires: ' + str(OPTION) + '\r\n' +
+                        'Authorization: Digest response="' +
+                        respuesta +
+                        '"' + '\r\n\r\n')
+
                     my_socket.connect((IP_PROXY, PORT_PROXY))
                     data = my_socket.recv(1024)
                     message_recivied = data.decode('utf-8')
                     print(message_recivied)
+                    Log(LOG, 'recibir', IP_PROXY, PORT_PROXY, message_recivied)
 
                 elif '400' in message_recivied:
                     print(data.decode('utf-8'))
@@ -137,8 +149,9 @@ if __name__ == "__main__":
                 elif '405' in message_recivied:
                     print(data.decode('utf-8'))
             except ConnectionRefusedError:
-                exit('Error: No server listening at ' + IP_PROXY + ' port ' +
+                print('Error: No server listening at ' + IP_PROXY + ' port ' +
                      str(PORT_PROXY))
+
         elif METHOD == "INVITE":
             mensaje = (METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n' +
                        'Content-Type: ' +
@@ -148,6 +161,7 @@ if __name__ == "__main__":
                        ' ' + str(PORT_CANCION) + ' ' + 'RTP')
             
             my_socket.send(bytes(mensaje, 'utf-8') + b'\r\n')
+            Log(LOG, 'enviar', IP_PROXY, PORT_PROXY, mensaje)
             print('mensaje que envia: ' + mensaje)
 
             try:
@@ -190,6 +204,8 @@ if __name__ == "__main__":
         elif METHOD == "BYE":
             my_socket.send(bytes(METHOD + ' sip:' + OPTION +
                            ' SIP/2.0\r\n', 'utf-8') + b'\r\n')
+            Log(LOG, 'enviar', IP_PROXY, PORT_PROXY,
+                METHOD + ' sip:' + OPTION + ' SIP/2.0\r\n')
 
             try:
                 data = my_socket.recv(1024)
